@@ -8,7 +8,7 @@ interface JobAnalysis {
   requiredSkills: Array<{
     name: string
     level: 'beginner' | 'intermediate' | 'advanced' | 'expert'
-    category: 'technical' | 'tools' | 'soft' | 'domain'
+    category: 'technical' | 'tool' | 'soft' | 'domain'
     required: boolean
   }>
   experienceLevel: string
@@ -178,7 +178,12 @@ async function enhancedPatternMatching(jobDescription: string, resume?: string):
   const company = companyMatch ? companyMatch.exec(jobDescription)?.[1]?.trim() : 'Company'
 
   // More comprehensive skill extraction
-  const skillDatabase = {
+  const skillDatabase: {
+    technical: Array<{ name: string; patterns: RegExp[]; level: string }>
+    soft: Array<{ name: string; patterns: RegExp[]; level: string }>
+    tool: Array<{ name: string; patterns: RegExp[]; level: string }>
+    domain: Array<{ name: string; patterns: RegExp[]; level: string }>
+  } = {
     technical: [
       { name: 'JavaScript', patterns: [/javascript/i, /js/i, /ecmascript/i], level: 'advanced' },
       { name: 'TypeScript', patterns: [/typescript/i, /ts/i], level: 'intermediate' },
@@ -214,7 +219,7 @@ async function enhancedPatternMatching(jobDescription: string, resume?: string):
       { name: 'Time Management', patterns: [/time.?management/i, /deadline/i, /priorit/i], level: 'intermediate' },
       { name: 'Adaptability', patterns: [/adaptability/i, /flexible/i, /learn quickly/i], level: 'intermediate' }
     ],
-    tools: [
+    tool: [
       { name: 'Microsoft Office', patterns: [/office/i, /excel/i, /word/i, /powerpoint/i], level: 'intermediate' },
       { name: 'JIRA', patterns: [/jira/i], level: 'intermediate' },
       { name: 'Slack', patterns: [/slack/i], level: 'beginner' },
@@ -245,7 +250,7 @@ async function enhancedPatternMatching(jobDescription: string, resume?: string):
         requiredSkills.push({
           name: skill.name,
           level: skill.level as any,
-          category: category as 'technical' | 'soft' | 'domain' | 'tools',
+          category: category as 'technical' | 'tool' | 'soft' | 'domain',
           required: true
         })
       }

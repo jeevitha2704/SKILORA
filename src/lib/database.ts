@@ -48,7 +48,7 @@ export interface JobAnalysis {
 
 export interface ParsedSkill {
   name: string
-  category: 'technical' | 'tools' | 'soft' | 'domain'
+  category: 'technical' | 'tool' | 'soft' | 'domain'
   level: 'beginner' | 'intermediate' | 'advanced' | 'expert'
   required: boolean
 }
