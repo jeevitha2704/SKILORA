@@ -86,6 +86,33 @@ export default function SkillGap() {
   }
 
   const analyzeGeneralSkills = () => {
+    console.log('Analyzing general skills...')
+    console.log('User skills:', userSkills)
+    
+    // Add sample skills for testing if no skills exist
+    if (userSkills.length === 0) {
+      console.log('No user skills found, adding sample skills for testing')
+      const sampleSkills = [
+        { name: 'JavaScript', level: 'intermediate', category: 'technical' },
+        { name: 'React', level: 'advanced', category: 'technical' },
+        { name: 'Communication', level: 'expert', category: 'soft' },
+        { name: 'Project Management', level: 'intermediate', category: 'soft' }
+      ]
+      
+      const generalGapData: SkillGapData[] = sampleSkills.map((skill) => ({
+        skill: skill.name,
+        required: 100,
+        current: getSkillLevelValue(skill.level),
+        status: getSkillStatus(skill.level),
+        category: skill.category,
+        gapPercentage: Math.max(0, 100 - getSkillLevelValue(skill.level))
+      }))
+      
+      console.log('Generated sample gap data:', generalGapData)
+      setSkillGapData(generalGapData)
+      return
+    }
+    
     setAnalyzing(true)
     try {
       // Generate skill gap data based on user skills alone
@@ -98,6 +125,7 @@ export default function SkillGap() {
         gapPercentage: Math.max(0, 100 - getSkillLevelValue(skill.level))
       }))
       
+      console.log('Generated gap data:', generalGapData)
       setSkillGapData(generalGapData)
     } catch (error) {
       console.error('Error analyzing general skills:', error)
