@@ -109,19 +109,19 @@ export default function Home() {
           <p className="text-xl text-gray-300 mb-8 max-w-3xl mx-auto">
             AI-powered career readiness platform that helps students bridge the gap between their current skills and dream job requirements
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link href="/analyzer">
               <Card className="bg-white border-gray-200 hover:shadow-lg transition-shadow cursor-pointer">
-                <CardContent className="py-2 px-4">
-                  <h3 className="font-semibold text-gray-900 text-center">Analyze a Job</h3>
+                <CardContent className="py-2 px-3">
+                  <h3 className="font-semibold text-gray-900 text-center text-sm">Analyze a Job</h3>
                 </CardContent>
               </Card>
             </Link>
             
             <Link href="/profile">
               <Card className="bg-white border-gray-200 hover:shadow-lg transition-shadow cursor-pointer">
-                <CardContent className="py-2 px-4">
-                  <h3 className="font-semibold text-gray-900 text-center">Build Your Profile</h3>
+                <CardContent className="py-2 px-3">
+                  <h3 className="font-semibold text-gray-900 text-center text-sm">Build Your Profile</h3>
                 </CardContent>
               </Card>
             </Link>
