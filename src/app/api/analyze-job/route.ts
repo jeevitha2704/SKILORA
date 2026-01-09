@@ -397,7 +397,12 @@ export async function POST(request: NextRequest) {
           experience: analysis.experienceLevel || 'Not specified',
           education: analysis.educationRequirements || 'Not specified',
           raw_text: jobDescription,
-          parsed_skills: analysis.requiredSkills
+          parsed_skills: analysis.requiredSkills.map((skill: any) => ({
+            name: skill.name,
+            level: skill.level,
+            category: skill.category === 'tools' ? 'tool' : skill.category,
+            required: skill.required
+          }))
         })
       } catch (error) {
         console.error('Error saving job analysis:', error)
