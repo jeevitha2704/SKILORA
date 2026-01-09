@@ -72,7 +72,7 @@ export default function JobAnalyzer() {
       case 'expert': return 'bg-teal-500/20 text-teal-400 border-teal-500/30';
       default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
     }
-  } as any
+  }
 
   const getCategoryColor = (category: string): string => {
     switch (category) {
@@ -81,7 +81,6 @@ export default function JobAnalyzer() {
       case 'tool': return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
       case 'domain': return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30';
       default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
-      default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
     }
   }
 
