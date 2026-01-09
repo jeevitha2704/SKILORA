@@ -61,10 +61,8 @@ Location: Remote`
 export default function JobAnalyzer() {
   const { user } = useAuth()
   const [jobDescription, setJobDescription] = useState('')
-  const [resume, setResume] = useState('')
   const [analysis, setAnalysis] = useState<ParsedJD | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const getSkillLevelColor = (level: string) => {
     switch (level) {
@@ -95,7 +93,7 @@ export default function JobAnalyzer() {
     setIsLoading(true)
     
     try {
-      // Call the real AI API
+      // Call real AI API
       const response = await fetch('/api/analyze-job', {
         method: 'POST',
         headers: {
@@ -103,7 +101,6 @@ export default function JobAnalyzer() {
         },
         body: JSON.stringify({
           jobDescription: jobDescription.trim(),
-          resume: resume.trim(),
           userId: user?.id
         }),
       })
@@ -116,7 +113,7 @@ export default function JobAnalyzer() {
 
       // Convert API response to our component format
       const analysis: ParsedJD = {
-        title: data.analysis.jobTitle || 'Position',
+        title: data.analysis.title || 'Position',
         company: data.analysis.company || 'Company',
         experience: data.analysis.experienceLevel || 'Not specified',
         education: data.analysis.educationRequirements || 'Not specified',
@@ -138,12 +135,6 @@ export default function JobAnalyzer() {
     }
   }
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const text = e.target?.result as string
         setResume(text)
       }
       reader.readAsText(file)
@@ -166,12 +157,13 @@ export default function JobAnalyzer() {
       <Navbar />
       
       <div className="max-w-7xl mx-auto px-4 pt-24 py-8">
+        {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary/20 text-primary border border-primary/30">
-            <Brain className="h-4 w-4 mr-2" />
-            AI-Powered Analysis
+            <Sparkles className="h-4 w-4 mr-2" />
+            Powered by AI
           </div>
-          <h1 className="text-4xl font-bold gradient-text mb-4 font-space-grotesk">
+          <h1 className="text-4xl md:text-6xl font-bold gradient-text mb-4 font-space-grotesk">
             Job Description Analyzer
           </h1>
           <p className="text-xl text-gray-300">
@@ -182,92 +174,41 @@ export default function JobAnalyzer() {
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Left Column - Input Section */}
           <div className="space-y-6">
-            {/* Resume Upload Card */}
+            {/* Job Description Input */}
             <Card className="glass-accent hover-lift">
               <CardHeader>
                 <CardTitle className="text-white flex items-center gap-2">
-                  <User className="h-5 w-5 text-primary" />
-                  Your Resume
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {!resume ? (
-                  <div className="border-2 border-dashed border-white/20 rounded-lg p-8 text-center hover:border-primary/50 transition-colors">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".txt,.pdf,.doc,.docx"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                    />
-                    <Upload className="h-12 w-12 text-primary mx-auto mb-4" />
-                    <p className="text-white mb-2">Upload your resume</p>
-                    <p className="text-gray-400 text-sm mb-4">
-                      Supports TXT, PDF, DOC, DOCX files
-                    </p>
-                    <div className="bg-white rounded-md px-4 py-2 inline-block cursor-pointer hover:bg-gray-100 transition-colors">
-                      <span 
-                        onClick={() => fileInputRef.current?.click()}
-                        className="text-gray-800 font-medium"
-                      >
-                        Choose File
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-background/50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <FileText className="h-5 w-5 text-primary" />
-                        <div>
-                          <p className="text-white font-medium">Resume uploaded</p>
-                          <p className="text-gray-400 text-sm">Ready for analysis</p>
-                        </div>
-                      </div>
-                      <Button
-                        onClick={removeResume}
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-400 hover:text-red-300"
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                    <div className="max-h-40 overflow-y-auto bg-background/30 rounded-lg p-3">
-                      <pre className="text-gray-300 text-xs whitespace-pre-wrap">
-                        {resume.substring(0, 500)}{resume.length > 500 ? '...' : ''}
-                      </pre>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="glass-teal hover-lift">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  <FileSearch className="h-5 w-5 text-primary" />
+                  <FileText className="h-5 w-5 text-primary" />
                   Job Description
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <Textarea
-                  placeholder="Paste the job description here or describe your target role..."
+                  placeholder="Paste a job description here..."
                   value={jobDescription}
                   onChange={(e) => setJobDescription(e.target.value)}
-                  className="min-h-[200px] bg-background/50 border-white/20 text-white placeholder:text-gray-500"
+                  className="min-h-[200px] resize-none"
                 />
-                <div className="flex gap-2">
-                  <Button
+                
+                <div className="flex justify-between items-center">
+                  <Button 
+                    onClick={loadSample}
+                    variant="outline"
+                    className="text-gray-300 hover:text-white"
+                  >
+                    <FileSearch className="h-4 w-4 mr-2" />
+                    Load Sample
+                  </Button>
+                  
+                  <Button 
                     onClick={analyzeJob}
-                    disabled={(!jobDescription.trim() && !resume.trim()) || isLoading}
+                    disabled={isLoading || !jobDescription.trim()}
                     className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                    size="lg"
                   >
                     {isLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Analyzing with AI...
+                        Analyzing...
                       </>
                     ) : (
                       <>
@@ -275,9 +216,6 @@ export default function JobAnalyzer() {
                         Analyze with AI
                       </>
                     )}
-                  </Button>
-                  <Button variant="glass" size="lg" onClick={loadSample}>
-                    Load Sample
                   </Button>
                 </div>
               </CardContent>

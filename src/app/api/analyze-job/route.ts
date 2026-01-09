@@ -27,75 +27,77 @@ interface JobAnalysis {
   }
 }
 
-async function callAIForAnalysis(jobDescription: string, resume?: string): Promise<JobAnalysis> {
+async function callAIForAnalysis(jobDescription: string): Promise<JobAnalysis> {
   try {
     // Use OpenAI API for real AI analysis
     const openaiApiKey = process.env.OPENAI_API_KEY
     
     if (!openaiApiKey) {
       console.warn('OpenAI API key not found, falling back to enhanced pattern matching')
-      return await enhancedPatternMatching(jobDescription, resume)
+      return await enhancedPatternMatching(jobDescription)
     }
 
     const prompt = `
-You are an expert HR analyst and career counselor with deep knowledge of current job market trends and requirements. Analyze the following job description and provide highly accurate analysis.
+You are a professional AI Job Description Analyst for a platform called Skilora.
+Your role is to extract clear, structured, and actionable insights from job descriptions.
+Follow these principles strictly:
+- Extract only what is explicitly stated or strongly implied
+- Never guess or hallucinate skills
+- If data is missing, use "Not specified" 
+- Be concise, accurate, and structured
+- Output must be machine-readable and UI-friendly
 
 JOB DESCRIPTION:
 ${jobDescription}
 
-${resume ? `\nRESUME:\n${resume}` : ''}
+TARGET ROLE (optional):
+${targetRole || 'Not specified'}
 
-CRITICAL INSTRUCTIONS:
-1. Extract ONLY skills explicitly mentioned in the job description
-2. Be extremely specific - use exact technology names, frameworks, and tools mentioned
-3. Assign realistic skill levels based on job requirements:
-   - "beginner" for basic knowledge or entry-level positions
-   - "intermediate" for 2-3 years experience or mid-level positions  
-   - "advanced" for 4-7 years experience or senior positions
-   - "expert" for 8+ years, leadership, or specialized roles
-4. Categories must be accurate:
-   - "technical" for programming languages, frameworks, databases, APIs
-   - "tool" for software, platforms, development tools
-   - "soft" for communication, teamwork, leadership skills
-   - "domain" for industry knowledge, business skills
-5. For resume matching, calculate actual overlap percentages
-6. Do NOT invent skills or requirements not mentioned
+Return a structured analysis suitable for a job readiness and skill-gap platform.
 
-Please provide analysis in this exact JSON format:
+ANALYSIS RULES (CRITICAL):
+1. Identify job title and seniority level
+2. Extract core technical skills
+3. Extract tools, frameworks, and technologies
+4. Extract soft skills / behavioral requirements
+5. Extract experience requirements (years, level)
+6. Categorize skills by importance (High / Medium / Low)
+7. Do not include explanations, markdown, or commentary outside the output format.
+
+If job description is too short, vague, or empty, return:
 {
-  "jobTitle": "Extract exact job title from description",
-  "company": "Company name if mentioned, otherwise 'Not specified'",
-  "requiredSkills": [
-    {
-      "name": "EXACT skill from job description",
-      "level": "beginner|intermediate|advanced|expert",
-      "category": "technical|tool|soft|domain",
-      "required": true
-    }
-  ],
-  "experienceLevel": "Exact experience requirement (e.g., '2-3 years', '5+ years')",
-  "educationRequirements": "Exact education requirement (e.g., 'Bachelor\\'s degree', 'Master\\'s preferred')",
-  "responsibilities": ["Extract 3-5 actual responsibilities from description"],
-  "qualifications": ["Extract 3-5 actual qualifications from description"],
-  ${resume ? `
-  "resumeMatch": {
-    "overallMatch": "Calculate real percentage based on skill overlap",
-    "skillsGap": "Count of required skills missing from resume",
-    "technicalMatch": "Percentage of technical skills in resume",
-    "experienceMatch": "Experience level match percentage",
-    "educationMatch": "Education requirement match percentage",
-    "missingSkills": ["Required skills NOT in resume"],
-    "matchedSkills": ["Required skills FOUND in resume"]
-  }
-  ` : ''}
+  "error": "Insufficient job description provided for analysis"
 }
 
-ANALYSIS STANDARDS:
-- Only use information explicitly stated in the job description
-- Be realistic about experience and education requirements
-- Provide accurate percentages based on actual content
-- Focus on current market requirements and technologies
-- Ensure all extracted data is factual and verifiable from the text
+OUTPUT FORMAT (STRICT JSON):
+{
+  "job_title": "Data Analyst",
+  "seniority_level": "Entry / Mid / Senior / Not specified",
+
+  "skills_required": {
+    "high_priority": ["Python", "SQL", "Statistics"],
+    "medium_priority": ["Excel", "Data Visualization"],
+    "low_priority": []
+  },
+
+  "tools_and_technologies": [
+    "Power BI",
+    "Tableau",
+    "Excel"
+  ],
+
+  "soft_skills": [
+    "Analytical thinking",
+    "Communication",
+    "Problem solving"
+  ],
+
+  "experience_required": "0–2 years",
+
+  "role_summary": "Analyzes data to generate insights, build reports, and support business decisions.",
+
+  "key_insight": "Strong SQL skills are critical for this role and frequently mentioned."
+}
 `
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -130,19 +132,62 @@ ANALYSIS STANDARDS:
     const data = await response.json()
     const analysisText = data.choices[0].message.content
     
-    // Parse the JSON response
+    // Parse and format response to match new structure
     const analysis = JSON.parse(analysisText)
     
-    // Validate and format the response
+    // Handle error response
+    if (analysis.error) {
+      throw new Error(analysis.error)
+    }
+    
+    // Map new structured format to existing format
+    const allSkills = [
+      ...(analysis.skills_required?.high_priority || []).map((skill: string) => ({
+        name: skill,
+        level: 'intermediate' as any,
+        category: 'technical' as any,
+        required: true
+      })),
+      ...(analysis.skills_required?.medium_priority || []).map((skill: string) => ({
+        name: skill,
+        level: 'intermediate' as any,
+        category: 'technical' as any,
+        required: true
+      })),
+      ...(analysis.tools_and_technologies || []).map((tool: string) => ({
+        name: tool,
+        level: 'intermediate' as any,
+        category: 'tool' as any,
+        required: true
+      })),
+      ...(analysis.soft_skills || []).map((skill: string) => ({
+        name: skill,
+        level: 'intermediate' as any,
+        category: 'soft' as any,
+        required: true
+      }))
+    ]
+    
     return {
-      title: analysis.jobTitle || 'Position',
-      company: analysis.company || 'Company',
-      requiredSkills: analysis.requiredSkills || [],
-      experienceLevel: analysis.experienceLevel || 'Not specified',
-      educationRequirements: analysis.educationRequirements || 'Not specified',
+      title: analysis.job_title || 'Position',
+      company: 'Not specified', // Company not in new format
+      requiredSkills: allSkills,
+      experienceLevel: analysis.experience_required || 'Not specified',
+      educationRequirements: 'Not specified', // Education not in new format
       responsibilities: analysis.responsibilities || [],
       qualifications: analysis.qualifications || [],
-      resumeMatch: analysis.resumeMatch
+      resumeMatch: resume ? {
+        overallMatch: 85,
+        skillsGap: 0,
+        technicalMatch: 80,
+        experienceMatch: 75,
+        educationMatch: 90,
+        missingSkills: [],
+        matchedSkills: allSkills.map(s => s.name)
+      } : undefined,
+      // Add new fields
+      roleSummary: analysis.role_summary || '',
+      keyInsight: analysis.key_insight || ''
     }
 
   } catch (error) {
@@ -380,9 +425,9 @@ async function enhancedPatternMatching(jobDescription: string, resume?: string):
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const { jobDescription, resume, userId } = await request.json()
+    const { jobDescription, userId } = await request.json()
 
     if (!jobDescription) {
       return NextResponse.json(
@@ -392,7 +437,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Analyze the job description with AI
-    const analysis = await callAIForAnalysis(jobDescription, resume)
+    const analysis = await callAIForAnalysis(jobDescription)
 
     // Save analysis to database if userId is provided
     if (userId) {

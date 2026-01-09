@@ -112,7 +112,7 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link href="/analyzer">
               <Card className="bg-white border-gray-200 hover:shadow-lg transition-shadow cursor-pointer">
-                <CardContent className="py-2 px-3">
+                <CardContent className="py-1 px-3">
                   <h3 className="font-semibold text-gray-900 text-center text-sm">Analyze a Job</h3>
                 </CardContent>
               </Card>
@@ -120,7 +120,7 @@ export default function Home() {
             
             <Link href="/profile">
               <Card className="bg-white border-gray-200 hover:shadow-lg transition-shadow cursor-pointer">
-                <CardContent className="py-2 px-3">
+                <CardContent className="py-1 px-3">
                   <h3 className="font-semibold text-gray-900 text-center text-sm">Build Your Profile</h3>
                 </CardContent>
               </Card>
