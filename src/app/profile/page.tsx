@@ -21,7 +21,7 @@ import {
   getProjects,
   addProject as addProjectToDB,
   updateProject,
-  deleteProject
+  deleteProject as deleteProjectFromDB
 } from '@/lib/database'
 import { 
   User, 
@@ -118,7 +118,12 @@ export default function Profile() {
   const loadSkills = async () => {
     try {
       const data = await getUserSkills(user?.id || '')
-      setSkills(data)
+      setSkills(
+        (data || []).map((s: any) => ({
+          ...s,
+          category: s.category === 'tools' ? 'tool' : s.category
+        }))
+      )
     } catch (error) {
       console.error('Error loading skills:', error)
     }
@@ -126,7 +131,13 @@ export default function Profile() {
   }
 
   const loadProjects = async () => {
-    // Projects will be implemented separately
+    try {
+      const data = await getProjects(user?.id || '')
+      setProjects(data)
+    } catch (error) {
+      console.error('Error loading projects:', error)
+      setProjects([])
+    }
     setLoading(false)
   }
 
@@ -207,7 +218,7 @@ export default function Profile() {
 
     try {
       console.log('Deleting project:', projectId)
-      await deleteProject(projectId)
+      await deleteProjectFromDB(projectId)
       setProjects(projects.filter(project => project.id !== projectId))
       alert('Project deleted successfully!')
     } catch (error) {
@@ -452,7 +463,7 @@ export default function Profile() {
                           </SelectTrigger>
                           <SelectContent className="bg-background border-white/20">
                             <SelectItem value="technical">Technical</SelectItem>
-                            <SelectItem value="tools">Tools</SelectItem>
+                            <SelectItem value="tool">Tools</SelectItem>
                             <SelectItem value="soft">Soft Skills</SelectItem>
                             <SelectItem value="domain">Domain</SelectItem>
                           </SelectContent>

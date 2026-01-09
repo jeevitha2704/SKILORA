@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 import { createJobAnalysis } from '@/lib/database'
 
 interface JobAnalysis {
@@ -38,65 +38,31 @@ async function callAIForAnalysis(jobDescription: string): Promise<JobAnalysis> {
     }
 
     const prompt = `
-You are a professional AI Job Description Analyst for a platform called Skilora.
-Your role is to extract clear, structured, and actionable insights from job descriptions.
-Follow these principles strictly:
-- Extract only what is explicitly stated or strongly implied
-- Never guess or hallucinate skills
-- If data is missing, use "Not specified" 
-- Be concise, accurate, and structured
-- Output must be machine-readable and UI-friendly
+You are an AI Job Description Analyzer.
+Your task is to analyze a job description and extract clear, structured job requirements.
+
+Extraction rules:
+- Extract ONLY what is explicitly mentioned in the job description
+- Do NOT guess or add missing information
+- If a detail is not mentioned, use the exact string "Not specified"
+- Return STRICT JSON only (no markdown, no prose)
 
 JOB DESCRIPTION:
 ${jobDescription}
 
-TARGET ROLE (optional):
-${targetRole || 'Not specified'}
+If the job description is empty or too short to analyze, return:
+{"error":"Insufficient job description provided for analysis"}
 
-Return a structured analysis suitable for a job readiness and skill-gap platform.
-
-ANALYSIS RULES (CRITICAL):
-1. Identify job title and seniority level
-2. Extract core technical skills
-3. Extract tools, frameworks, and technologies
-4. Extract soft skills / behavioral requirements
-5. Extract experience requirements (years, level)
-6. Categorize skills by importance (High / Medium / Low)
-7. Do not include explanations, markdown, or commentary outside the output format.
-
-If job description is too short, vague, or empty, return:
+Return this STRICT JSON format:
 {
-  "error": "Insufficient job description provided for analysis"
-}
-
-OUTPUT FORMAT (STRICT JSON):
-{
-  "job_title": "Data Analyst",
-  "seniority_level": "Entry / Mid / Senior / Not specified",
-
-  "skills_required": {
-    "high_priority": ["Python", "SQL", "Statistics"],
-    "medium_priority": ["Excel", "Data Visualization"],
-    "low_priority": []
-  },
-
-  "tools_and_technologies": [
-    "Power BI",
-    "Tableau",
-    "Excel"
-  ],
-
-  "soft_skills": [
-    "Analytical thinking",
-    "Communication",
-    "Problem solving"
-  ],
-
-  "experience_required": "0–2 years",
-
-  "role_summary": "Analyzes data to generate insights, build reports, and support business decisions.",
-
-  "key_insight": "Strong SQL skills are critical for this role and frequently mentioned."
+  "jobTitle": "Not specified",
+  "company": "Not specified",
+  "experienceLevel": "Not specified",
+  "educationRequirements": "Not specified",
+  "salaryRange": "Not specified",
+  "requiredSkills": [],
+  "responsibilities": [],
+  "qualifications": []
 }
 `
 
@@ -107,11 +73,11 @@ OUTPUT FORMAT (STRICT JSON):
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4',
+        model: 'gpt-3.5-turbo',
         messages: [
           {
             role: 'system',
-            content: 'You are an expert HR analyst providing accurate job analysis based on real job market data. Always respond with valid JSON.'
+            content: 'You extract structured job requirements from job descriptions. Respond with STRICT JSON only.'
           },
           {
             role: 'user',
@@ -132,71 +98,57 @@ OUTPUT FORMAT (STRICT JSON):
     const data = await response.json()
     const analysisText = data.choices[0].message.content
     
-    // Parse and format response to match new structure
     const analysis = JSON.parse(analysisText)
     
-    // Handle error response
     if (analysis.error) {
       throw new Error(analysis.error)
     }
-    
-    // Map new structured format to existing format
-    const allSkills = [
-      ...(analysis.skills_required?.high_priority || []).map((skill: string) => ({
-        name: skill,
-        level: 'intermediate' as any,
-        category: 'technical' as any,
-        required: true
-      })),
-      ...(analysis.skills_required?.medium_priority || []).map((skill: string) => ({
-        name: skill,
-        level: 'intermediate' as any,
-        category: 'technical' as any,
-        required: true
-      })),
-      ...(analysis.tools_and_technologies || []).map((tool: string) => ({
-        name: tool,
-        level: 'intermediate' as any,
-        category: 'tool' as any,
-        required: true
-      })),
-      ...(analysis.soft_skills || []).map((skill: string) => ({
-        name: skill,
-        level: 'intermediate' as any,
-        category: 'soft' as any,
-        required: true
-      }))
-    ]
-    
+
+    const requiredSkills = Array.isArray(analysis.requiredSkills)
+      ? analysis.requiredSkills
+          .filter(
+            (s: any) =>
+              s &&
+              typeof s.name === 'string' &&
+              s.name.trim() &&
+              s.name.trim().toLowerCase() !== 'not specified'
+          )
+          .map((s: any) => ({
+            name: String(s.name).trim(),
+            level: (s.level || 'intermediate') as any,
+            category: (s.category === 'tools' ? 'tool' : s.category) as any,
+            required: Boolean(s.required),
+          }))
+      : []
+
     return {
-      title: analysis.job_title || 'Position',
-      company: 'Not specified', // Company not in new format
-      requiredSkills: allSkills,
-      experienceLevel: analysis.experience_required || 'Not specified',
-      educationRequirements: 'Not specified', // Education not in new format
-      responsibilities: analysis.responsibilities || [],
-      qualifications: analysis.qualifications || [],
-      resumeMatch: resume ? {
-        overallMatch: 85,
-        skillsGap: 0,
-        technicalMatch: 80,
-        experienceMatch: 75,
-        educationMatch: 90,
-        missingSkills: [],
-        matchedSkills: allSkills.map(s => s.name)
-      } : undefined,
-      // Add new fields
-      roleSummary: analysis.role_summary || '',
-      keyInsight: analysis.key_insight || ''
+      title: typeof analysis.jobTitle === 'string' && analysis.jobTitle.trim() ? analysis.jobTitle.trim() : 'Not specified',
+      company: typeof analysis.company === 'string' && analysis.company.trim() ? analysis.company.trim() : 'Not specified',
+      requiredSkills,
+      experienceLevel:
+        typeof analysis.experienceLevel === 'string' && analysis.experienceLevel.trim()
+          ? analysis.experienceLevel.trim()
+          : 'Not specified',
+      educationRequirements:
+        typeof analysis.educationRequirements === 'string' && analysis.educationRequirements.trim()
+          ? analysis.educationRequirements.trim()
+          : 'Not specified',
+      salaryRange:
+        typeof analysis.salaryRange === 'string' && analysis.salaryRange.trim()
+          ? analysis.salaryRange.trim()
+          : 'Not specified',
+      responsibilities: Array.isArray(analysis.responsibilities) ? analysis.responsibilities : [],
+      qualifications: Array.isArray(analysis.qualifications) ? analysis.qualifications : [],
+      resumeMatch: undefined,
     }
 
   } catch (error) {
     console.error('AI analysis failed, falling back to pattern matching:', error)
-    return await enhancedPatternMatching(jobDescription, resume)
+    return await enhancedPatternMatching(jobDescription)
   }
 }
 
-async function enhancedPatternMatching(jobDescription: string, resume?: string): Promise<JobAnalysis> {
+async function enhancedPatternMatching(jobDescription: string): Promise<JobAnalysis> {
   // Enhanced pattern matching for when AI is not available
   const text = jobDescription.toLowerCase()
   
@@ -209,7 +161,7 @@ async function enhancedPatternMatching(jobDescription: string, resume?: string):
     /staff\s+(.+)/i
   ]
   
-  let jobTitle = 'Position'
+  let jobTitle = 'Not specified'
   for (const pattern of titlePatterns) {
     const match = text.match(pattern)
     if (match) {
@@ -226,7 +178,7 @@ async function enhancedPatternMatching(jobDescription: string, resume?: string):
     /(?:company|organization):\s*([A-Z][a-zA-Z\s&]+?)(?:\n|\.|,|$)/i
   ]
   const companyMatch = companyPatterns.find(pattern => pattern.test(jobDescription))
-  const company = companyMatch ? companyMatch.exec(jobDescription)?.[1]?.trim() : 'Company'
+  const company = companyMatch ? companyMatch.exec(jobDescription)?.[1]?.trim() : 'Not specified'
 
   // More comprehensive skill extraction
   const skillDatabase: {
@@ -289,7 +241,7 @@ async function enhancedPatternMatching(jobDescription: string, resume?: string):
   const requiredSkills: Array<{
     name: string
     level: 'beginner' | 'intermediate' | 'advanced' | 'expert'
-    category: 'technical' | 'tools' | 'soft' | 'domain'
+    category: 'technical' | 'tool' | 'soft' | 'domain'
     required: boolean
     patterns?: RegExp[]
   }> = []
@@ -345,74 +297,6 @@ async function enhancedPatternMatching(jobDescription: string, resume?: string):
     }
   }
 
-  // Enhanced resume matching logic
-  let resumeMatch
-  if (resume) {
-    const resumeText = resume.toLowerCase()
-    
-    const matchedSkills = requiredSkills.filter(skill => 
-      skill.patterns?.some((pattern: RegExp) => pattern.test(resumeText))
-    ).map(skill => skill.name)
-    
-    const missingSkills = requiredSkills
-      .filter(skill => !matchedSkills.includes(skill.name))
-      .map(skill => skill.name)
-
-    // Calculate more accurate match percentages
-    const totalRequiredSkills = requiredSkills.length
-    const matchedCount = matchedSkills.length
-    const overallMatch = totalRequiredSkills > 0 ? Math.round((matchedCount / totalRequiredSkills) * 100) : 0
-    
-    const technicalSkills = requiredSkills.filter(s => s.category === 'technical')
-    const matchedTechnical = technicalSkills.filter(skill => 
-      skill.patterns?.some((pattern: RegExp) => pattern.test(resumeText))
-    ).length
-    const technicalMatch = technicalSkills.length > 0 ? Math.round((matchedTechnical / technicalSkills.length) * 100) : 0
-
-    // Extract experience from resume for better matching
-    const resumeExperiencePatterns = [
-      /(\d+)\+?\s*(?:years?|yrs?)\s*(?:of\s*)?experience/i,
-      /experience:\s*(\d+)/i
-    ]
-    let resumeYears = 0
-    for (const pattern of resumeExperiencePatterns) {
-      const match = resumeText.match(pattern)
-      if (match) {
-        resumeYears = parseInt(match[1])
-        break
-      }
-    }
-
-    // Extract education from resume
-    const resumeEducationPatterns = [
-      /bachelor'?s?|bs|b\.s/i,
-      /master'?s?|ms|m\.s/i,
-      /phd|doctorate/i
-    ]
-    let hasDegree = false
-    for (const pattern of resumeEducationPatterns) {
-      if (pattern.test(resumeText)) {
-        hasDegree = true
-        break
-      }
-    }
-
-    // Calculate experience and education matches
-    const requiredYears = parseInt(experienceLevel) || 0
-    const experienceMatch = requiredYears > 0 ? Math.min(100, Math.round((resumeYears / requiredYears) * 100)) : 100
-    const educationMatch = hasDegree ? 100 : 50
-
-    resumeMatch = {
-      overallMatch,
-      skillsGap: missingSkills.length,
-      technicalMatch,
-      experienceMatch,
-      educationMatch,
-      missingSkills,
-      matchedSkills
-    }
-  }
-
   return {
     title: jobTitle,
     company,
@@ -421,7 +305,7 @@ async function enhancedPatternMatching(jobDescription: string, resume?: string):
     educationRequirements,
     responsibilities: [],
     qualifications: [],
-    resumeMatch
+    resumeMatch: undefined
   }
 }
 
@@ -442,36 +326,36 @@ export async function POST(request: Request) {
     // Save analysis to database if userId is provided
     if (userId) {
       try {
-        console.log('Saving job analysis for user:', userId)
-        console.log('Analysis data:', {
+        const parsed_skills = analysis.requiredSkills.map((skill: any) => ({
+          name: skill.name,
+          level: skill.level,
+          category: skill.category === 'tools' ? 'tool' : skill.category,
+          required: skill.required
+        }))
+
+        const payload = {
           title: analysis.title || 'Position',
           company: analysis.company || 'Company',
           experience: analysis.experienceLevel || 'Not specified',
           education: analysis.educationRequirements || 'Not specified',
           raw_text: jobDescription,
-          parsed_skills: analysis.requiredSkills.map((skill: any) => ({
-            name: skill.name,
-            level: skill.level,
-            category: skill.category === 'tools' ? 'tool' : skill.category,
-            required: skill.required
-          }))
-        })
-        
-        const savedAnalysis = await createJobAnalysis(userId, {
-          title: analysis.title || 'Position',
-          company: analysis.company || 'Company',
-          experience: analysis.experienceLevel || 'Not specified',
-          education: analysis.educationRequirements || 'Not specified',
-          raw_text: jobDescription,
-          parsed_skills: analysis.requiredSkills.map((skill: any) => ({
-            name: skill.name,
-            level: skill.level,
-            category: skill.category === 'tools' ? 'tool' : skill.category,
-            required: skill.required
-          }))
-        })
-        
-        console.log('Job analysis saved successfully:', savedAnalysis)
+          parsed_skills
+        }
+
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+        if (supabaseUrl && serviceRoleKey) {
+          const admin = createClient(supabaseUrl, serviceRoleKey)
+          const { error: insertError } = await admin
+            .from('job_analyses')
+            .insert({ user_id: userId, ...payload })
+
+          if (insertError) throw insertError
+        } else {
+          // No service role configured. Skip server-side insert (client-side save will handle it with session).
+          console.warn('SUPABASE_SERVICE_ROLE_KEY not configured; skipping server-side job_analyses insert')
+        }
       } catch (error) {
         console.error('Error saving job analysis:', error)
         // Continue even if save fails

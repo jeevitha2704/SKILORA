@@ -8,7 +8,7 @@ interface JobAnalysis {
   requiredSkills: Array<{
     name: string
     level: 'beginner' | 'intermediate' | 'advanced' | 'expert'
-    category: 'technical' | 'tools' | 'soft' | 'domain'
+    category: 'technical' | 'tool' | 'soft' | 'domain'
     required: boolean
   }>
   experienceLevel: string
@@ -38,58 +38,44 @@ async function callAIForAnalysis(jobDescription: string, resume?: string): Promi
     }
 
     const prompt = `
-You are an expert HR analyst and career counselor with deep knowledge of current job market trends and requirements. Analyze the following job description and resume to provide highly accurate and personalized analysis.
+You are an AI Job Description Analyzer.
+Your task is to analyze a job description and extract clear, structured job requirements.
+
+Extraction rules:
+- Extract ONLY what is explicitly mentioned in the job description
+- Do NOT guess or add missing information
+- If a detail is not mentioned, use the exact string "Not specified"
+- Return STRICT JSON only (no markdown, no prose)
 
 JOB DESCRIPTION:
 ${jobDescription}
 
-${resume ? `\nRESUME:\n${resume}` : ''}
+${resume ? `\nRESUME (optional input for resumeMatch only):\n${resume}` : ''}
 
-CRITICAL INSTRUCTIONS:
-1. Be extremely specific and detailed in your analysis
-2. Extract ACTUAL skills mentioned, not generic ones
-3. For resume analysis, identify EXACT skills the candidate has vs what's needed
-4. Provide realistic match percentages based on actual skill overlap
-5. Consider experience levels, education, and specific technologies mentioned
-6. Focus on CURRENT market requirements and trends
-7. Do NOT provide generic or fake information
+If the job description is empty or too short to analyze, return:
+{"error":"Insufficient job description provided for analysis"}
 
-Please provide a detailed analysis in the following JSON format:
+Return this STRICT JSON format:
 {
-  "jobTitle": "Extracted exact job title from description",
-  "company": "Company type (e.g., 'Tech Company', 'Startup', 'Enterprise')",
-  "requiredSkills": [
-    {
-      "name": "EXACT skill name mentioned in job description",
-      "level": "beginner|intermediate|advanced|expert based on job requirements",
-      "category": "technical|soft|tools|domain",
-      "required": true/false based on whether it's essential or preferred
-    }
-  ],
-  "experienceLevel": "Exact experience requirement from description",
-  "educationRequirements": "Exact education requirements from description",
-  "responsibilities": ["Extract actual responsibilities from job description"],
-  "qualifications": ["Extract actual qualifications from job description"],
-  ${resume ? `
+  "jobTitle": "Not specified",
+  "company": "Not specified",
+  "experienceLevel": "Not specified",
+  "educationRequirements": "Not specified",
+  "salaryRange": "Not specified",
+  "requiredSkills": [],
+  "responsibilities": [],
+  "qualifications": []
+  ${resume ? `,
   "resumeMatch": {
-    "overallMatch": "Calculate based on actual skill overlap (0-100)",
-    "skillsGap": "Count of required skills NOT found in resume",
-    "technicalMatch": "Percentage of technical skills candidate actually has",
-    "experienceMatch": "Match based on years of experience in resume vs requirements", 
-    "educationMatch": "Match based on education in resume vs requirements",
-    "missingSkills": ["List of required skills NOT found in resume"],
-    "matchedSkills": ["List of required skills FOUND in resume"]
-  }
-  ` : ''}
+    "overallMatch": 0,
+    "skillsGap": 0,
+    "technicalMatch": 0,
+    "experienceMatch": 0,
+    "educationMatch": 0,
+    "missingSkills": [],
+    "matchedSkills": []
+  }` : ''}
 }
-
-ANALYSIS REQUIREMENTS:
-- Extract ONLY skills explicitly mentioned in the job description
-- For resume matching, identify exact skills present vs missing
-- Be realistic about experience and education requirements
-- Provide accurate percentages based on actual content analysis
-- Consider seniority level and industry standards
-- Focus on what employers are actually looking for in 2024-2025
 `
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -99,11 +85,11 @@ ANALYSIS REQUIREMENTS:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4',
+        model: 'gpt-3.5-turbo',
         messages: [
           {
             role: 'system',
-            content: 'You are an expert HR analyst providing accurate job analysis based on real job market data. Always respond with valid JSON.'
+            content: 'You extract structured job requirements from job descriptions. Respond with STRICT JSON only.'
           },
           {
             role: 'user',
@@ -129,11 +115,23 @@ ANALYSIS REQUIREMENTS:
     
     // Validate and format the response
     return {
-      title: analysis.jobTitle || 'Position',
-      company: analysis.company || 'Company',
-      requiredSkills: analysis.requiredSkills || [],
+      title: typeof analysis.jobTitle === 'string' && analysis.jobTitle.trim() ? analysis.jobTitle.trim() : 'Not specified',
+      company: typeof analysis.company === 'string' && analysis.company.trim() ? analysis.company.trim() : 'Not specified',
+      requiredSkills: (Array.isArray(analysis.requiredSkills) ? analysis.requiredSkills : [])
+        .filter(
+          (skill: any) =>
+            skill &&
+            typeof skill.name === 'string' &&
+            skill.name.trim() &&
+            skill.name.trim().toLowerCase() !== 'not specified'
+        )
+        .map((skill: any) => ({
+          ...skill,
+          category: skill.category === 'tools' ? 'tool' : skill.category,
+        })),
       experienceLevel: analysis.experienceLevel || 'Not specified',
       educationRequirements: analysis.educationRequirements || 'Not specified',
+      salaryRange: typeof analysis.salaryRange === 'string' && analysis.salaryRange.trim() ? analysis.salaryRange.trim() : 'Not specified',
       responsibilities: analysis.responsibilities || [],
       qualifications: analysis.qualifications || [],
       resumeMatch: analysis.resumeMatch
@@ -157,7 +155,7 @@ async function enhancedPatternMatching(jobDescription: string, resume?: string):
     /staff\s+(.+)/i
   ]
   
-  let jobTitle = 'Position'
+  let jobTitle = 'Not specified'
   for (const pattern of titlePatterns) {
     const match = text.match(pattern)
     if (match) {
@@ -174,7 +172,7 @@ async function enhancedPatternMatching(jobDescription: string, resume?: string):
     /(?:company|organization):\s*([A-Z][a-zA-Z\s&]+?)(?:\n|\.|,|$)/i
   ]
   const companyMatch = companyPatterns.find(pattern => pattern.test(jobDescription))
-  const company = companyMatch ? companyMatch.exec(jobDescription)?.[1]?.trim() : 'Company'
+  const company = companyMatch ? companyMatch.exec(jobDescription)?.[1]?.trim() : 'Not specified'
 
   // More comprehensive skill extraction
   const skillDatabase = {
@@ -213,15 +211,19 @@ async function enhancedPatternMatching(jobDescription: string, resume?: string):
       { name: 'Time Management', patterns: [/time.?management/i, /deadline/i, /priorit/i], level: 'intermediate' },
       { name: 'Adaptability', patterns: [/adaptability/i, /flexible/i, /learn quickly/i], level: 'intermediate' }
     ],
-    tools: [
+    tool: [
       { name: 'Microsoft Office', patterns: [/office/i, /excel/i, /word/i, /powerpoint/i], level: 'intermediate' },
       { name: 'JIRA', patterns: [/jira/i], level: 'intermediate' },
       { name: 'Slack', patterns: [/slack/i], level: 'beginner' },
       { name: 'Figma', patterns: [/figma/i], level: 'intermediate' },
       { name: 'VS Code', patterns: [/vs.?code/i, /visual studio/i], level: 'intermediate' },
-      { name: 'CI/CD', patterns: [/ci\/cd/i, /continuous integration/i, /jenkins/i, /github actions/i], level: 'intermediate' }
+      { name: 'CI/CD', patterns: [/ci\/cd/i, /continuous integration/i, /jenkins/i, /github actions/i], level: 'intermediate' },
+      { name: 'Git', patterns: [/git/i, /github/i, /gitlab/i], level: 'advanced' }
     ],
     domain: [
+      { name: 'Agile', patterns: [/agile/i, /scrum/i, /kanban/i], level: 'intermediate' },
+      { name: 'DevOps', patterns: [/devops/i, /ci\/cd/i, /continuous integration/i], level: 'advanced' },
+      { name: 'Cloud Computing', patterns: [/cloud/i, /aws/i, /azure/i, /gcp/i], level: 'intermediate' },
       { name: 'E-commerce', patterns: [/ecommerce/i, /e-commerce/i], level: 'intermediate' },
       { name: 'Finance', patterns: [/finance/i, /fintech/i, /banking/i], level: 'intermediate' },
       { name: 'Healthcare', patterns: [/healthcare/i, /medical/i], level: 'intermediate' },
@@ -232,7 +234,7 @@ async function enhancedPatternMatching(jobDescription: string, resume?: string):
   const requiredSkills: Array<{
     name: string
     level: 'beginner' | 'intermediate' | 'advanced' | 'expert'
-    category: 'technical' | 'soft' | 'domain' | 'tools'
+    category: 'technical' | 'soft' | 'domain' | 'tool'
     required: boolean
     patterns?: RegExp[]
   }> = []
@@ -244,7 +246,7 @@ async function enhancedPatternMatching(jobDescription: string, resume?: string):
         requiredSkills.push({
           name: skill.name,
           level: skill.level as any,
-          category: category as 'technical' | 'soft' | 'domain' | 'tools',
+          category: category as 'technical' | 'soft' | 'domain' | 'tool',
           required: true
         })
       }
@@ -391,7 +393,10 @@ export async function POST(request: NextRequest) {
           experience: analysis.experienceLevel || 'Not specified',
           education: analysis.educationRequirements || 'Not specified',
           raw_text: jobDescription,
-          parsed_skills: analysis.requiredSkills
+          parsed_skills: analysis.requiredSkills.map((skill) => ({
+            ...skill,
+            category: skill.category,
+          }))
         })
       } catch (error) {
         console.error('Error saving job analysis:', error)

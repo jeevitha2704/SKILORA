@@ -229,6 +229,31 @@ export async function deleteUserSkill(skillId: string): Promise<void> {
 
 // Job Analysis operations
 export async function createJobAnalysis(userId: string, analysis: Omit<JobAnalysis, 'id' | 'user_id' | 'created_at'>): Promise<JobAnalysis> {
+  // Check for existing job analysis with deduplication logic
+  const titleToCheck = analysis.title?.toLowerCase().trim()
+  const companyToCheck = (analysis.company || '').toLowerCase().trim()
+  
+  const { data: existingAnalyses } = await supabase
+    .from('job_analyses')
+    .select('id, title, company, created_at')
+    .eq('user_id', userId)
+  
+  // Look for existing analysis with similar title (ignoring case and whitespace)
+  const existingAnalysis = existingAnalyses?.find((job: any) => {
+    const existingTitle = job.title?.toLowerCase().trim()
+    const existingCompany = (job.company || '').toLowerCase().trim()
+    
+    // Consider it a duplicate if title matches (regardless of company)
+    // or if both title and company match
+    return existingTitle === titleToCheck && 
+           (companyToCheck === '' || existingCompany === companyToCheck)
+  })
+  
+  // If it exists, return the existing analysis instead of creating a duplicate
+  if (existingAnalysis) {
+    return { ...existingAnalysis, ...analysis } as JobAnalysis
+  }
+  
   const { data, error } = await supabase
     .from('job_analyses')
     .insert({
@@ -250,7 +275,23 @@ export async function getJobAnalyses(userId: string): Promise<JobAnalysis[]> {
     .order('created_at', { ascending: false })
   
   if (error) throw error
-  return data || []
+  
+  // Remove duplicates by keeping only the most recent analysis for each unique job title
+  const uniqueJobs = data?.reduce((acc: JobAnalysis[], job) => {
+    const jobTitle = job.title?.toLowerCase().trim()
+    const existingIndex = acc.findIndex(existing => 
+      existing.title?.toLowerCase().trim() === jobTitle
+    )
+    
+    if (existingIndex >= 0) {
+      // Keep the most recent one (higher index in descending order)
+      return acc
+    } else {
+      return [...acc, job]
+    }
+  }, [] as JobAnalysis[])
+  
+  return uniqueJobs || []
 }
 
 export async function getJobAnalysis(analysisId: string): Promise<JobAnalysis | null> {

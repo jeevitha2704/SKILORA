@@ -36,6 +36,26 @@ interface SkillGapData {
   gapPercentage: number
 }
 
+ interface SkillGapAIAnalysis {
+   skill_gap_summary?: {
+     strong_matches: string[]
+     partial_matches: string[]
+     missing_skills: string[]
+   }
+   priority_classification?: {
+     high_priority: string[]
+     medium_priority: string[]
+     low_priority: string[]
+   }
+   job_readiness_estimate?: number
+   gap_insights?: string[]
+   next_best_skill?: {
+     skill: string
+     reason: string
+     estimated_effort: string
+   }
+ }
+
 export default function SkillGap() {
   const { user } = useAuth()
   const router = useRouter()
@@ -44,9 +64,10 @@ export default function SkillGap() {
   const [selectedJob, setSelectedJob] = useState<string>('')
   const [skillComparisons, setSkillComparisons] = useState<SkillComparison[]>([])
   const [skillGapData, setSkillGapData] = useState<SkillGapData[]>([])
+  const [aiSkillGapAnalysis, setAiSkillGapAnalysis] = useState<SkillGapAIAnalysis | null>(null)
   const [loading, setLoading] = useState(true)
   const [analyzing, setAnalyzing] = useState(false)
-  const [analysisMode, setAnalysisMode] = useState<'job' | 'general'>('general')
+  const analysisMode: 'job' = 'job'
 
   useEffect(() => {
     if (user) {
@@ -85,55 +106,6 @@ export default function SkillGap() {
     }
   }
 
-  const analyzeGeneralSkills = () => {
-    console.log('Analyzing general skills...')
-    console.log('User skills:', userSkills)
-    
-    // Add sample skills for testing if no skills exist
-    if (userSkills.length === 0) {
-      console.log('No user skills found, adding sample skills for testing')
-      const sampleSkills = [
-        { name: 'JavaScript', level: 'intermediate', category: 'technical' },
-        { name: 'React', level: 'advanced', category: 'technical' },
-        { name: 'Communication', level: 'expert', category: 'soft' },
-        { name: 'Project Management', level: 'intermediate', category: 'soft' }
-      ]
-      
-      const generalGapData: SkillGapData[] = sampleSkills.map((skill) => ({
-        skill: skill.name,
-        required: 100,
-        current: getSkillLevelValue(skill.level),
-        status: getSkillStatus(skill.level),
-        category: skill.category,
-        gapPercentage: Math.max(0, 100 - getSkillLevelValue(skill.level))
-      }))
-      
-      console.log('Generated sample gap data:', generalGapData)
-      setSkillGapData(generalGapData)
-      return
-    }
-    
-    setAnalyzing(true)
-    try {
-      // Generate skill gap data based on user skills alone
-      const generalGapData: SkillGapData[] = userSkills.map((skill: any) => ({
-        skill: skill.name,
-        required: 100, // Assume full proficiency as goal
-        current: getSkillLevelValue(skill.level),
-        status: getSkillStatus(skill.level),
-        category: skill.category,
-        gapPercentage: Math.max(0, 100 - getSkillLevelValue(skill.level))
-      }))
-      
-      console.log('Generated gap data:', generalGapData)
-      setSkillGapData(generalGapData)
-    } catch (error) {
-      console.error('Error analyzing general skills:', error)
-    } finally {
-      setAnalyzing(false)
-    }
-  }
-
   const getSkillLevelValue = (level: string): number => {
     switch (level) {
       case 'beginner': return 25
@@ -144,18 +116,90 @@ export default function SkillGap() {
     }
   }
 
-  const getSkillStatus = (level: string): 'match' | 'partial' | 'missing' => {
-    const value = getSkillLevelValue(level)
-    if (value >= 80) return 'match'
-    if (value >= 50) return 'partial'
-    return 'missing'
-  }
-
   const analyzeSkillGap = async () => {
     if (!selectedJob) return
 
     setAnalyzing(true)
     try {
+      // Prefer AI-based skill gap analysis (Skilora master prompt)
+      const jobAnalysis = jobAnalyses.find(job => job.id === selectedJob)
+      if (jobAnalysis && Array.isArray(jobAnalysis.parsed_skills)) {
+        const normalizedUserSkills = userSkills
+          .filter((s: any) => s?.skill_name)
+          .map((s: any) => ({
+            name: s.skill_name,
+            level: s.level,
+            category: s.category
+          }))
+
+        if (normalizedUserSkills.length > 0) {
+          const aiResponse = await fetch('/api/analyze-skill-gap', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              job_requirements: {
+                title: jobAnalysis.title,
+                company: jobAnalysis.company,
+                required_skills: jobAnalysis.parsed_skills
+              },
+              user_skills: normalizedUserSkills,
+              experience_level: jobAnalysis.experience
+            })
+          })
+
+          const aiData = await aiResponse.json()
+
+          if (aiResponse.ok && aiData?.analysis?.skill_gap_summary) {
+            setAiSkillGapAnalysis(aiData.analysis)
+            const summary = aiData.analysis.skill_gap_summary
+
+            const strongSet = new Set((summary.strong_matches || []).map((s: string) => s.toLowerCase()))
+            const partialSet = new Set((summary.partial_matches || []).map((s: string) => s.toLowerCase()))
+            const missingSet = new Set((summary.missing_skills || []).map((s: string) => s.toLowerCase()))
+
+            const toPercent = (level: any): number => {
+              if (typeof level === 'number') {
+                // DB levels are usually 0-4
+                return Math.max(0, Math.min(100, Math.round((level / 4) * 100)))
+              }
+              return getSkillLevelValue(String(level))
+            }
+
+            const gapData: SkillGapData[] = jobAnalysis.parsed_skills.map((requiredSkill: ParsedSkill) => {
+              const key = requiredSkill.name.toLowerCase()
+
+              const userSkill = userSkills.find((s: any) =>
+                (s.skill_name || '').toLowerCase() === key
+              )
+
+              const currentPct = userSkill ? toPercent(userSkill.level) : 0
+
+              let status: 'match' | 'partial' | 'missing' = 'missing'
+              if (strongSet.has(key)) status = 'match'
+              else if (partialSet.has(key)) status = 'partial'
+              else if (missingSet.has(key)) status = 'missing'
+
+              return {
+                skill: requiredSkill.name,
+                required: 100,
+                current: currentPct,
+                status,
+                category: requiredSkill.category,
+                gapPercentage: Math.max(0, 100 - currentPct)
+              }
+            })
+
+            setSkillGapData(gapData)
+            setSkillComparisons([])
+            return
+          }
+        }
+      }
+
+      setAiSkillGapAnalysis(null)
+
       // Get existing comparisons
       const existingComparisons = await getSkillComparisons(user?.id || '', selectedJob)
       
@@ -207,6 +251,7 @@ export default function SkillGap() {
       }
     } catch (error) {
       console.error('Error analyzing skill gap:', error)
+      setAiSkillGapAnalysis(null)
     } finally {
       setAnalyzing(false)
     }
@@ -327,40 +372,6 @@ export default function SkillGap() {
           <p className="text-gray-300 max-w-2xl mx-auto mb-6">
             Compare your current skills with job requirements to identify areas for improvement
           </p>
-          
-          {/* Analysis Mode Selection */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
-            <Card className="bg-white border-gray-200 hover:shadow-lg transition-shadow cursor-pointer">
-              <CardContent className="py-3 px-4">
-                <button
-                  className={`w-full text-left font-semibold transition-colors ${
-                    analysisMode === 'general'
-                      ? 'text-primary'
-                      : 'text-gray-600 hover:text-primary'
-                  }`}
-                  onClick={() => setAnalysisMode('general')}
-                >
-                  General Skills
-                </button>
-              </CardContent>
-            </Card>
-            {jobAnalyses.length > 0 && (
-              <Card className="bg-white border-gray-200 hover:shadow-lg transition-shadow cursor-pointer">
-                <CardContent className="py-3 px-4">
-                  <button
-                    className={`w-full text-left font-semibold transition-colors ${
-                      analysisMode === 'job'
-                        ? 'text-primary'
-                        : 'text-gray-600 hover:text-primary'
-                    }`}
-                    onClick={() => setAnalysisMode('job')}
-                  >
-                    Job-Based
-                  </button>
-                </CardContent>
-              </Card>
-            )}
-          </div>
         </div>
 
         {/* Job Selection */}
@@ -409,80 +420,12 @@ export default function SkillGap() {
                 <Button
                   onClick={analyzeSkillGap}
                   disabled={!selectedJob || analyzing}
-                  className="bg-primary hover:bg-primary/90"
+                  className="bg-primary text-white hover:bg-primary/90 relative z-10"
                 >
                   {analyzing ? 'Analyzing...' : 'Analyze Skill Gap'}
                   <BarChart3 className="ml-2 h-4 w-4" />
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* General Skills Analysis */}
-        {analysisMode === 'general' && (
-          <Card className="glass border-white/10 mb-8">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-primary" />
-                Your Skills Overview
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {userSkills.length > 0 ? (
-                <>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-blue-400">{userSkills.length}</div>
-                      <div className="text-sm text-gray-400">Total Skills</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-green-400">
-                        {userSkills.filter((s: any) => s.level === 'expert').length}
-                      </div>
-                      <div className="text-sm text-gray-400">Expert</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-yellow-400">
-                        {userSkills.filter((s: any) => s.level === 'advanced').length}
-                      </div>
-                      <div className="text-sm text-gray-400">Advanced</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-orange-400">
-                        {userSkills.filter((s: any) => s.level === 'intermediate').length}
-                      </div>
-                      <div className="text-sm text-gray-400">Intermediate</div>
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <Button 
-                      onClick={analyzeGeneralSkills}
-                      disabled={analyzing}
-                      className="bg-primary hover:bg-primary/90"
-                    >
-                      {analyzing ? 'Analyzing...' : 'Analyze Skill Gaps'}
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <div className="text-center">
-                  <p className="text-gray-400 mb-4">
-                    No skills in your profile. Adding sample skills for demonstration...
-                  </p>
-                  <Card className="bg-white border-gray-200 hover:shadow-lg transition-shadow inline-block">
-                    <CardContent className="p-4">
-                      <Button 
-                        onClick={analyzeGeneralSkills}
-                        disabled={analyzing}
-                        className="bg-primary hover:bg-primary/90"
-                      >
-                        {analyzing ? 'Analyzing...' : 'Try Sample Analysis'}
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
             </CardContent>
           </Card>
         )}
@@ -499,8 +442,8 @@ export default function SkillGap() {
                 Analyze a job description first to compare your skills
               </p>
               <Button asChild className="bg-primary hover:bg-primary/90">
-                <Link href={analysisMode === 'general' ? '/profile' : '/analyzer'}>
-                  {analysisMode === 'general' ? 'Build Your Profile' : 'Analyze a Job'}
+                <Link href="/analyzer">
+                  Analyze a Job
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
@@ -511,6 +454,122 @@ export default function SkillGap() {
         {/* Skill Gap Results */}
         {skillGapData.length > 0 && (
           <div className="space-y-8">
+            {analysisMode === 'job' && aiSkillGapAnalysis && (
+              <div className="grid lg:grid-cols-2 gap-6">
+                <Card className="glass border-white/10">
+                  <CardHeader>
+                    <CardTitle className="text-white flex items-center gap-2">
+                      <Target className="h-5 w-5 text-primary" />
+                      Job Readiness
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold text-white mb-3">
+                      {typeof aiSkillGapAnalysis.job_readiness_estimate === 'number'
+                        ? `${aiSkillGapAnalysis.job_readiness_estimate}%`
+                        : `${calculateOverallMatch()}%`}
+                    </div>
+                    <ProgressBar
+                      value={
+                        typeof aiSkillGapAnalysis.job_readiness_estimate === 'number'
+                          ? aiSkillGapAnalysis.job_readiness_estimate
+                          : calculateOverallMatch()
+                      }
+                      className="h-3"
+                    />
+                  </CardContent>
+                </Card>
+
+                <Card className="glass border-white/10">
+                  <CardHeader>
+                    <CardTitle className="text-white flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-primary" />
+                      Priority Skills
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <div className="text-sm font-semibold text-white mb-2">High Priority</div>
+                      <div className="flex flex-wrap gap-2">
+                        {(aiSkillGapAnalysis.priority_classification?.high_priority || []).length > 0 ? (
+                          aiSkillGapAnalysis.priority_classification!.high_priority.map((s, i) => (
+                            <Badge key={`hp-${i}`} className="bg-red-500/20 text-red-300 border border-red-500/30">
+                              {s}
+                            </Badge>
+                          ))
+                        ) : (
+                          <span className="text-sm text-gray-400">None</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-sm font-semibold text-white mb-2">Medium Priority</div>
+                      <div className="flex flex-wrap gap-2">
+                        {(aiSkillGapAnalysis.priority_classification?.medium_priority || []).length > 0 ? (
+                          aiSkillGapAnalysis.priority_classification!.medium_priority.map((s, i) => (
+                            <Badge key={`mp-${i}`} className="bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
+                              {s}
+                            </Badge>
+                          ))
+                        ) : (
+                          <span className="text-sm text-gray-400">None</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-sm font-semibold text-white mb-2">Low Priority</div>
+                      <div className="flex flex-wrap gap-2">
+                        {(aiSkillGapAnalysis.priority_classification?.low_priority || []).length > 0 ? (
+                          aiSkillGapAnalysis.priority_classification!.low_priority.map((s, i) => (
+                            <Badge key={`lp-${i}`} className="bg-green-500/20 text-green-300 border border-green-500/30">
+                              {s}
+                            </Badge>
+                          ))
+                        ) : (
+                          <span className="text-sm text-gray-400">None</span>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="glass border-white/10 lg:col-span-2">
+                  <CardHeader>
+                    <CardTitle className="text-white flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5 text-primary" />
+                      Insights
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {(aiSkillGapAnalysis.gap_insights || []).length > 0 ? (
+                      <div className="space-y-2">
+                        {aiSkillGapAnalysis.gap_insights!.map((insight, i) => (
+                          <div key={`ins-${i}`} className="text-gray-300">
+                            - {insight}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-gray-400">No insights provided.</div>
+                    )}
+
+                    {aiSkillGapAnalysis.next_best_skill && (
+                      <div className="mt-6 p-4 rounded-lg border border-white/10 bg-white/5">
+                        <div className="text-sm font-semibold text-white mb-2">Next Best Skill</div>
+                        <div className="text-white font-medium">{aiSkillGapAnalysis.next_best_skill.skill}</div>
+                        <div className="text-sm text-gray-300 mt-1">{aiSkillGapAnalysis.next_best_skill.reason}</div>
+                        <div className="text-sm text-gray-400 mt-1">
+                          Estimated effort: {aiSkillGapAnalysis.next_best_skill.estimated_effort}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
             {/* Overall Match */}
             <Card className="glass border-white/10">
               <CardHeader>
