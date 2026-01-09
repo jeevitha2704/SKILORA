@@ -46,6 +46,7 @@ export default function SkillGap() {
   const [skillGapData, setSkillGapData] = useState<SkillGapData[]>([])
   const [loading, setLoading] = useState(true)
   const [analyzing, setAnalyzing] = useState(false)
+  const [analysisMode, setAnalysisMode] = useState<'job' | 'general'>('general')
 
   useEffect(() => {
     if (user) {
@@ -82,6 +83,44 @@ export default function SkillGap() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const analyzeGeneralSkills = () => {
+    setAnalyzing(true)
+    try {
+      // Generate skill gap data based on user skills alone
+      const generalGapData: SkillGapData[] = userSkills.map((skill: any) => ({
+        skill: skill.name,
+        required: 100, // Assume full proficiency as goal
+        current: getSkillLevelValue(skill.level),
+        status: getSkillStatus(skill.level),
+        category: skill.category,
+        gapPercentage: Math.max(0, 100 - getSkillLevelValue(skill.level))
+      }))
+      
+      setSkillGapData(generalGapData)
+    } catch (error) {
+      console.error('Error analyzing general skills:', error)
+    } finally {
+      setAnalyzing(false)
+    }
+  }
+
+  const getSkillLevelValue = (level: string): number => {
+    switch (level) {
+      case 'beginner': return 25
+      case 'intermediate': return 50
+      case 'advanced': return 75
+      case 'expert': return 100
+      default: return 0
+    }
+  }
+
+  const getSkillStatus = (level: string): 'match' | 'partial' | 'missing' => {
+    const value = getSkillLevelValue(level)
+    if (value >= 80) return 'match'
+    if (value >= 50) return 'partial'
+    return 'missing'
   }
 
   const analyzeSkillGap = async () => {
@@ -257,13 +296,39 @@ export default function SkillGap() {
           <h1 className="text-3xl font-bold text-white mb-4">
             Skill Gap Analysis
           </h1>
-          <p className="text-gray-300 max-w-2xl mx-auto">
+          <p className="text-gray-300 max-w-2xl mx-auto mb-6">
             Compare your current skills with job requirements to identify areas for improvement
           </p>
+          
+          {/* Analysis Mode Selection */}
+          <div className="inline-flex rounded-lg bg-white/10 p-1 mb-6">
+            <button
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                analysisMode === 'general'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+              onClick={() => setAnalysisMode('general')}
+            >
+              General Skills
+            </button>
+            {jobAnalyses.length > 0 && (
+              <button
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  analysisMode === 'job'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+                onClick={() => setAnalysisMode('job')}
+              >
+                Job-Based
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Job Selection */}
-        {jobAnalyses.length > 0 && (
+        {analysisMode === 'job' && jobAnalyses.length > 0 && (
           <Card className="glass border-white/10 mb-8">
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
@@ -318,20 +383,71 @@ export default function SkillGap() {
           </Card>
         )}
 
-        {/* No Jobs Message */}
-        {jobAnalyses.length === 0 && (
+        {/* General Skills Analysis */}
+        {analysisMode === 'general' && userSkills.length > 0 && (
+          <Card className="glass border-white/10 mb-8">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-primary" />
+                Your Skills Overview
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-400">{userSkills.length}</div>
+                  <div className="text-sm text-gray-400">Total Skills</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-400">
+                    {userSkills.filter((s: any) => s.level === 'expert').length}
+                  </div>
+                  <div className="text-sm text-gray-400">Expert</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-yellow-400">
+                    {userSkills.filter((s: any) => s.level === 'advanced').length}
+                  </div>
+                  <div className="text-sm text-gray-400">Advanced</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-orange-400">
+                    {userSkills.filter((s: any) => s.level === 'intermediate').length}
+                  </div>
+                  <div className="text-sm text-gray-400">Intermediate</div>
+                </div>
+              </div>
+              <div className="text-center">
+                <Button 
+                  onClick={analyzeGeneralSkills}
+                  disabled={analyzing}
+                  className="bg-primary hover:bg-primary/90"
+                >
+                  {analyzing ? 'Analyzing...' : 'Analyze Skill Gaps'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* No Jobs/No Skills Message */}
+        {((analysisMode === 'job' && jobAnalyses.length === 0) || 
+          (analysisMode === 'general' && userSkills.length === 0)) && (
           <Card className="glass border-white/10 mb-8">
             <CardContent className="p-12 text-center">
               <Brain className="h-16 w-16 text-primary mx-auto mb-4 opacity-50" />
               <h3 className="text-xl font-semibold text-white mb-2">
-                No Job Analyses Yet
+                {analysisMode === 'general' ? 'No Skills in Profile' : 'No Job Analyses Yet'}
               </h3>
               <p className="text-gray-400 mb-6">
-                Analyze a job description first to compare your skills
+                {analysisMode === 'general' 
+                  ? 'Add skills to your profile first to analyze your skill gaps'
+                  : 'Analyze a job description first to compare your skills'
+                }
               </p>
               <Button asChild className="bg-primary hover:bg-primary/90">
-                <Link href="/analyzer">
-                  Analyze a Job
+                <Link href={analysisMode === 'general' ? '/profile' : '/analyzer'}>
+                  {analysisMode === 'general' ? 'Build Your Profile' : 'Analyze a Job'}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
