@@ -329,28 +329,36 @@ export default function SkillGap() {
           </p>
           
           {/* Analysis Mode Selection */}
-          <div className="inline-flex rounded-lg bg-white/10 p-1 mb-6">
-            <button
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                analysisMode === 'general'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-              onClick={() => setAnalysisMode('general')}
-            >
-              General Skills
-            </button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
+            <Card className="bg-white border-gray-200 hover:shadow-lg transition-shadow cursor-pointer">
+              <CardContent className="p-4">
+                <button
+                  className={`w-full text-left font-semibold transition-colors ${
+                    analysisMode === 'general'
+                      ? 'text-primary'
+                      : 'text-gray-600 hover:text-primary'
+                  }`}
+                  onClick={() => setAnalysisMode('general')}
+                >
+                  General Skills
+                </button>
+              </CardContent>
+            </Card>
             {jobAnalyses.length > 0 && (
-              <button
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  analysisMode === 'job'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-                onClick={() => setAnalysisMode('job')}
-              >
-                Job-Based
-              </button>
+              <Card className="bg-white border-gray-200 hover:shadow-lg transition-shadow cursor-pointer">
+                <CardContent className="p-4">
+                  <button
+                    className={`w-full text-left font-semibold transition-colors ${
+                      analysisMode === 'job'
+                        ? 'text-primary'
+                        : 'text-gray-600 hover:text-primary'
+                    }`}
+                    onClick={() => setAnalysisMode('job')}
+                  >
+                    Job-Based
+                  </button>
+                </CardContent>
+              </Card>
             )}
           </div>
         </div>
@@ -462,13 +470,17 @@ export default function SkillGap() {
                   <p className="text-gray-400 mb-4">
                     No skills in your profile. Adding sample skills for demonstration...
                   </p>
-                  <Button 
-                    onClick={analyzeGeneralSkills}
-                    disabled={analyzing}
-                    className="bg-primary hover:bg-primary/90"
-                  >
-                    {analyzing ? 'Analyzing...' : 'Try Sample Analysis'}
-                  </Button>
+                  <Card className="bg-white border-gray-200 hover:shadow-lg transition-shadow inline-block">
+                    <CardContent className="p-4">
+                      <Button 
+                        onClick={analyzeGeneralSkills}
+                        disabled={analyzing}
+                        className="bg-primary hover:bg-primary/90"
+                      >
+                        {analyzing ? 'Analyzing...' : 'Try Sample Analysis'}
+                      </Button>
+                    </CardContent>
+                  </Card>
                 </div>
               )}
             </CardContent>
