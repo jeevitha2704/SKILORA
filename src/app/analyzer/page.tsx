@@ -467,12 +467,13 @@ export default function JobAnalyzer() {
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="text-lg font-semibold text-white mb-1">Ready for Next Steps?</h3>
-                        <p className="text-gray-400 text-sm">Compare your skills with job requirements</p>
+                        <h3 className="text-lg font-semibold text-white mb-1">Analyze Your Skill Gap</h3>
+                        <p className="text-gray-400 text-sm">Compare your skills with this job's requirements</p>
                       </div>
                       <Button asChild className="bg-primary hover:bg-primary/90">
                         <Link href="/skill-gap">
-                          <ArrowRight className="h-4 w-4" />
+                          Analyze Skill Gap
+                          <ArrowRight className="ml-2 h-4 w-4" />
                         </Link>
                       </Button>
                     </div>

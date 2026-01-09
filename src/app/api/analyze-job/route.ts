@@ -38,7 +38,7 @@ async function callAIForAnalysis(jobDescription: string, resume?: string): Promi
     }
 
     const prompt = `
-You are an expert HR analyst and career counselor with deep knowledge of current job market trends and requirements. Analyze the following job description and resume to provide highly accurate and personalized analysis.
+You are an expert HR analyst and career counselor with deep knowledge of current job market trends and requirements. Analyze the following job description and provide highly accurate analysis.
 
 JOB DESCRIPTION:
 ${jobDescription}
@@ -46,50 +46,56 @@ ${jobDescription}
 ${resume ? `\nRESUME:\n${resume}` : ''}
 
 CRITICAL INSTRUCTIONS:
-1. Be extremely specific and detailed in your analysis
-2. Extract ACTUAL skills mentioned, not generic ones
-3. For resume analysis, identify EXACT skills the candidate has vs what's needed
-4. Provide realistic match percentages based on actual skill overlap
-5. Consider experience levels, education, and specific technologies mentioned
-6. Focus on CURRENT market requirements and trends
-7. Do NOT provide generic or fake information
+1. Extract ONLY skills explicitly mentioned in the job description
+2. Be extremely specific - use exact technology names, frameworks, and tools mentioned
+3. Assign realistic skill levels based on job requirements:
+   - "beginner" for basic knowledge or entry-level positions
+   - "intermediate" for 2-3 years experience or mid-level positions  
+   - "advanced" for 4-7 years experience or senior positions
+   - "expert" for 8+ years, leadership, or specialized roles
+4. Categories must be accurate:
+   - "technical" for programming languages, frameworks, databases, APIs
+   - "tool" for software, platforms, development tools
+   - "soft" for communication, teamwork, leadership skills
+   - "domain" for industry knowledge, business skills
+5. For resume matching, calculate actual overlap percentages
+6. Do NOT invent skills or requirements not mentioned
 
-Please provide a detailed analysis in the following JSON format:
+Please provide analysis in this exact JSON format:
 {
-  "jobTitle": "Extracted exact job title from description",
-  "company": "Company type (e.g., 'Tech Company', 'Startup', 'Enterprise')",
+  "jobTitle": "Extract exact job title from description",
+  "company": "Company name if mentioned, otherwise 'Not specified'",
   "requiredSkills": [
     {
-      "name": "EXACT skill name mentioned in job description",
-      "level": "beginner|intermediate|advanced|expert based on job requirements",
-      "category": "technical|soft|tool|domain",
-      "required": true/false based on whether it's essential or preferred
+      "name": "EXACT skill from job description",
+      "level": "beginner|intermediate|advanced|expert",
+      "category": "technical|tool|soft|domain",
+      "required": true
     }
   ],
-  "experienceLevel": "Exact experience requirement from description",
-  "educationRequirements": "Exact education requirements from description",
-  "responsibilities": ["Extract actual responsibilities from job description"],
-  "qualifications": ["Extract actual qualifications from job description"],
+  "experienceLevel": "Exact experience requirement (e.g., '2-3 years', '5+ years')",
+  "educationRequirements": "Exact education requirement (e.g., 'Bachelor\\'s degree', 'Master\\'s preferred')",
+  "responsibilities": ["Extract 3-5 actual responsibilities from description"],
+  "qualifications": ["Extract 3-5 actual qualifications from description"],
   ${resume ? `
   "resumeMatch": {
-    "overallMatch": "Calculate based on actual skill overlap (0-100)",
-    "skillsGap": "Count of required skills NOT found in resume",
-    "technicalMatch": "Percentage of technical skills candidate actually has",
-    "experienceMatch": "Match based on years of experience in resume vs requirements", 
-    "educationMatch": "Match based on education in resume vs requirements",
-    "missingSkills": ["List of required skills NOT found in resume"],
-    "matchedSkills": ["List of required skills FOUND in resume"]
+    "overallMatch": "Calculate real percentage based on skill overlap",
+    "skillsGap": "Count of required skills missing from resume",
+    "technicalMatch": "Percentage of technical skills in resume",
+    "experienceMatch": "Experience level match percentage",
+    "educationMatch": "Education requirement match percentage",
+    "missingSkills": ["Required skills NOT in resume"],
+    "matchedSkills": ["Required skills FOUND in resume"]
   }
   ` : ''}
 }
 
-ANALYSIS REQUIREMENTS:
-- Extract ONLY skills explicitly mentioned in the job description
-- For resume matching, identify exact skills present vs missing
+ANALYSIS STANDARDS:
+- Only use information explicitly stated in the job description
 - Be realistic about experience and education requirements
-- Provide accurate percentages based on actual content analysis
-- Consider seniority level and industry standards
-- Focus on what employers are actually looking for in 2024-2025
+- Provide accurate percentages based on actual content
+- Focus on current market requirements and technologies
+- Ensure all extracted data is factual and verifiable from the text
 `
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -391,7 +397,8 @@ export async function POST(request: NextRequest) {
     // Save analysis to database if userId is provided
     if (userId) {
       try {
-        await createJobAnalysis(userId, {
+        console.log('Saving job analysis for user:', userId)
+        console.log('Analysis data:', {
           title: analysis.title || 'Position',
           company: analysis.company || 'Company',
           experience: analysis.experienceLevel || 'Not specified',
@@ -404,10 +411,28 @@ export async function POST(request: NextRequest) {
             required: skill.required
           }))
         })
+        
+        const savedAnalysis = await createJobAnalysis(userId, {
+          title: analysis.title || 'Position',
+          company: analysis.company || 'Company',
+          experience: analysis.experienceLevel || 'Not specified',
+          education: analysis.educationRequirements || 'Not specified',
+          raw_text: jobDescription,
+          parsed_skills: analysis.requiredSkills.map((skill: any) => ({
+            name: skill.name,
+            level: skill.level,
+            category: skill.category === 'tools' ? 'tool' : skill.category,
+            required: skill.required
+          }))
+        })
+        
+        console.log('Job analysis saved successfully:', savedAnalysis)
       } catch (error) {
         console.error('Error saving job analysis:', error)
         // Continue even if save fails
       }
+    } else {
+      console.log('No userId provided, skipping database save')
     }
 
     return NextResponse.json({

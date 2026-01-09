@@ -57,8 +57,6 @@ export default function SkillGap() {
 
   const loadData = async () => {
     try {
-      console.log('Loading data for user:', user?.id)
-      
       const [skills, jobs] = await Promise.all([
         getUserSkills(user?.id || '').catch(err => {
           console.error('Error loading user skills:', err)
@@ -69,9 +67,6 @@ export default function SkillGap() {
           return []
         })
       ])
-      
-      console.log('Loaded skills:', skills)
-      console.log('Loaded jobs:', jobs)
       
       setUserSkills(skills)
       setJobAnalyses(jobs)
