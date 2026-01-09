@@ -331,7 +331,7 @@ export default function SkillGap() {
           {/* Analysis Mode Selection */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
             <Card className="bg-white border-gray-200 hover:shadow-lg transition-shadow cursor-pointer">
-              <CardContent className="p-4">
+              <CardContent className="py-3 px-4">
                 <button
                   className={`w-full text-left font-semibold transition-colors ${
                     analysisMode === 'general'
@@ -346,7 +346,7 @@ export default function SkillGap() {
             </Card>
             {jobAnalyses.length > 0 && (
               <Card className="bg-white border-gray-200 hover:shadow-lg transition-shadow cursor-pointer">
-                <CardContent className="p-4">
+                <CardContent className="py-3 px-4">
                   <button
                     className={`w-full text-left font-semibold transition-colors ${
                       analysisMode === 'job'
