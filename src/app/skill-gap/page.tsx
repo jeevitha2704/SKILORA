@@ -24,7 +24,14 @@ import {
   CheckCircle, 
   ArrowRight,
   Brain,
-  BarChart3
+  BarChart3,
+  Briefcase,
+  Microscope,
+  BookOpen,
+  Zap,
+  Lightbulb,
+  Map,
+  Users
 } from 'lucide-react'
 
 interface SkillGapData {
@@ -192,6 +199,19 @@ export default function SkillGap() {
             })
 
             setSkillGapData(gapData)
+            
+            // Save analyzed job data to localStorage for roadmap page
+            const jobData = jobAnalyses.find(job => job.id === selectedJob)
+            const roadmapData = {
+              jobTitle: jobData.title,
+              jobCompany: jobData.company,
+              jobRole: jobData.title,
+              skillGapAnalysis: aiData.analysis,
+              skillGapData: gapData,
+              analyzedAt: new Date().toISOString()
+            }
+            localStorage.setItem('analyzedJobForRoadmap', JSON.stringify(roadmapData))
+            
             setSkillComparisons([])
             return
           }
@@ -451,253 +471,464 @@ export default function SkillGap() {
           </Card>
         )}
 
-        {/* Skill Gap Results */}
+        {/* Skill Gap Results - PROFESSIONAL LAYOUT */}
         {skillGapData.length > 0 && (
           <div className="space-y-8">
-            {analysisMode === 'job' && aiSkillGapAnalysis && (
-              <div className="grid lg:grid-cols-2 gap-6">
-                <Card className="glass border-white/10">
-                  <CardHeader>
-                    <CardTitle className="text-white flex items-center gap-2">
-                      <Target className="h-5 w-5 text-primary" />
-                      Job Readiness
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold text-white mb-3">
-                      {typeof aiSkillGapAnalysis.job_readiness_estimate === 'number'
-                        ? `${aiSkillGapAnalysis.job_readiness_estimate}%`
-                        : `${calculateOverallMatch()}%`}
-                    </div>
-                    <ProgressBar
-                      value={
-                        typeof aiSkillGapAnalysis.job_readiness_estimate === 'number'
-                          ? aiSkillGapAnalysis.job_readiness_estimate
-                          : calculateOverallMatch()
-                      }
-                      className="h-3"
-                    />
-                  </CardContent>
-                </Card>
-
-                <Card className="glass border-white/10">
-                  <CardHeader>
-                    <CardTitle className="text-white flex items-center gap-2">
-                      <AlertTriangle className="h-5 w-5 text-primary" />
-                      Priority Skills
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
+            {/* 1. LATEST JOB OVERVIEW - Top Section */}
+            {analysisMode === 'job' && jobAnalyses.find(j => j.id === selectedJob) && (
+              <Card className="bg-gradient-to-r from-blue-600/10 to-purple-600/10 border-blue-500/30">
+                <CardContent className="p-6">
+                  <div className="grid lg:grid-cols-4 gap-6">
                     <div>
-                      <div className="text-sm font-semibold text-white mb-2">High Priority</div>
-                      <div className="flex flex-wrap gap-2">
-                        {(aiSkillGapAnalysis.priority_classification?.high_priority || []).length > 0 ? (
-                          aiSkillGapAnalysis.priority_classification!.high_priority.map((s, i) => (
-                            <Badge key={`hp-${i}`} className="bg-red-500/20 text-red-300 border border-red-500/30">
-                              {s}
-                            </Badge>
-                          ))
-                        ) : (
-                          <span className="text-sm text-gray-400">None</span>
-                        )}
-                      </div>
+                      <p className="text-gray-400 text-sm mb-1">Job Title</p>
+                      <h3 className="text-white text-xl font-bold">
+                        {jobAnalyses.find(j => j.id === selectedJob)?.title}
+                      </h3>
                     </div>
-
                     <div>
-                      <div className="text-sm font-semibold text-white mb-2">Medium Priority</div>
-                      <div className="flex flex-wrap gap-2">
-                        {(aiSkillGapAnalysis.priority_classification?.medium_priority || []).length > 0 ? (
-                          aiSkillGapAnalysis.priority_classification!.medium_priority.map((s, i) => (
-                            <Badge key={`mp-${i}`} className="bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
-                              {s}
-                            </Badge>
-                          ))
-                        ) : (
-                          <span className="text-sm text-gray-400">None</span>
-                        )}
-                      </div>
+                      <p className="text-gray-400 text-sm mb-1">Company</p>
+                      <p className="text-white font-semibold">
+                        {jobAnalyses.find(j => j.id === selectedJob)?.company}
+                      </p>
                     </div>
-
                     <div>
-                      <div className="text-sm font-semibold text-white mb-2">Low Priority</div>
-                      <div className="flex flex-wrap gap-2">
-                        {(aiSkillGapAnalysis.priority_classification?.low_priority || []).length > 0 ? (
-                          aiSkillGapAnalysis.priority_classification!.low_priority.map((s, i) => (
-                            <Badge key={`lp-${i}`} className="bg-green-500/20 text-green-300 border border-green-500/30">
-                              {s}
-                            </Badge>
-                          ))
-                        ) : (
-                          <span className="text-sm text-gray-400">None</span>
-                        )}
-                      </div>
+                      <p className="text-gray-400 text-sm mb-1">Experience</p>
+                      <p className="text-white font-semibold">
+                        {jobAnalyses.find(j => j.id === selectedJob)?.experience || 'Not specified'}
+                      </p>
                     </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="glass border-white/10 lg:col-span-2">
-                  <CardHeader>
-                    <CardTitle className="text-white flex items-center gap-2">
-                      <TrendingUp className="h-5 w-5 text-primary" />
-                      Insights
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {(aiSkillGapAnalysis.gap_insights || []).length > 0 ? (
-                      <div className="space-y-2">
-                        {aiSkillGapAnalysis.gap_insights!.map((insight, i) => (
-                          <div key={`ins-${i}`} className="text-gray-300">
-                            - {insight}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-gray-400">No insights provided.</div>
-                    )}
-
-                    {aiSkillGapAnalysis.next_best_skill && (
-                      <div className="mt-6 p-4 rounded-lg border border-white/10 bg-white/5">
-                        <div className="text-sm font-semibold text-white mb-2">Next Best Skill</div>
-                        <div className="text-white font-medium">{aiSkillGapAnalysis.next_best_skill.skill}</div>
-                        <div className="text-sm text-gray-300 mt-1">{aiSkillGapAnalysis.next_best_skill.reason}</div>
-                        <div className="text-sm text-gray-400 mt-1">
-                          Estimated effort: {aiSkillGapAnalysis.next_best_skill.estimated_effort}
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
+                    <div>
+                      <p className="text-gray-400 text-sm mb-1">Total Skills Required</p>
+                      <p className="text-white font-bold text-2xl">
+                        {skillGapData.length}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             )}
 
-            {/* Overall Match */}
-            <Card className="glass border-white/10">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-primary" />
-                  Overall Match: {calculateOverallMatch()}%
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ProgressBar value={calculateOverallMatch()} className="h-3" />
-                <div className="mt-4 grid grid-cols-3 gap-4 text-center">
-                  <div>
-                    <div className="text-2xl font-bold text-green-400">
-                      {getSkillsByStatus('match').length}
+            {/* 2. SKILL MATCH SUMMARY (Quick Snapshot) */}
+            <div className="grid lg:grid-cols-4 gap-4">
+              <Card className="glass border-white/10 bg-gradient-to-br from-green-500/10 to-green-600/5">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-gray-400 text-sm mb-2">Overall Match</p>
+                      <p className="text-green-400 text-3xl font-bold">
+                        {calculateOverallMatch()}%
+                      </p>
                     </div>
-                    <div className="text-sm text-gray-400">Matched</div>
+                    <CheckCircle className="h-12 w-12 text-green-400 opacity-20" />
                   </div>
-                  <div>
-                    <div className="text-2xl font-bold text-yellow-400">
-                      {getSkillsByStatus('partial').length}
-                    </div>
-                    <div className="text-sm text-gray-400">Partial</div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-red-400">
-                      {getSkillsByStatus('missing').length}
-                    </div>
-                    <div className="text-sm text-gray-400">Missing</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Skills Breakdown */}
-            <div className="grid lg:grid-cols-3 gap-6">
-              {/* Matched Skills */}
-              <Card className="glass border-white/10">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5 text-green-400" />
-                    Matched Skills ({getSkillsByStatus('match').length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {getSkillsByStatus('match').map((skill, index) => (
-                      <div key={index} className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
-                            {skill.skill}
-                          </Badge>
-                        </div>
-                        <span className="text-sm text-gray-400">
-                          {getSkillLevelLabel(skill.current)}
-                        </span>
-                      </div>
-                    ))}
+                  <div className="mt-3 h-2 bg-gray-700 rounded-full">
+                    <div 
+                      className="h-full bg-green-500 rounded-full" 
+                      style={{ width: `${calculateOverallMatch()}%` }}
+                    />
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Partial Skills */}
-              <Card className="glass border-white/10">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center gap-2">
-                    <AlertTriangle className="h-5 w-5 text-yellow-400" />
-                    Partial Match ({getSkillsByStatus('partial').length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {getSkillsByStatus('partial').map((skill, index) => (
-                      <div key={index} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
-                              {skill.skill}
-                            </Badge>
-                          </div>
-                          <span className="text-sm text-gray-400">
-                            {getSkillLevelLabel(skill.current)}/{getSkillLevelLabel(skill.required)}
-                          </span>
-                        </div>
-                        <div className="w-full bg-gray-700 rounded-full h-2">
-                          <div 
-                            className="bg-yellow-500 h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${(skill.current / skill.required) * 100}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
+              <Card className="glass border-white/10 bg-gradient-to-br from-blue-500/10 to-blue-600/5">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-gray-400 text-sm mb-2">Matched Skills</p>
+                      <p className="text-blue-400 text-3xl font-bold">
+                        {getSkillsByStatus('match').length}
+                      </p>
+                    </div>
+                    <CheckCircle className="h-12 w-12 text-blue-400 opacity-20" />
                   </div>
+                  <p className="text-gray-400 text-xs mt-3">
+                    Skills you already have
+                  </p>
                 </CardContent>
               </Card>
 
-              {/* Missing Skills */}
-              <Card className="glass border-white/10">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center gap-2">
-                    <Target className="h-5 w-5 text-red-400" />
-                    Missing Skills ({getSkillsByStatus('missing').length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {getSkillsByStatus('missing').map((skill, index) => (
-                      <div key={index} className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Badge className="bg-red-500/20 text-red-400 border-red-500/30">
-                            {skill.skill}
-                          </Badge>
-                        </div>
-                        <span className="text-sm text-gray-400">
-                          Need: {getSkillLevelLabel(skill.required)}
-                        </span>
-                      </div>
-                    ))}
+              <Card className="glass border-white/10 bg-gradient-to-br from-yellow-500/10 to-yellow-600/5">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-gray-400 text-sm mb-2">Partial Skills</p>
+                      <p className="text-yellow-400 text-3xl font-bold">
+                        {getSkillsByStatus('partial').length}
+                      </p>
+                    </div>
+                    <AlertTriangle className="h-12 w-12 text-yellow-400 opacity-20" />
                   </div>
+                  <p className="text-gray-400 text-xs mt-3">
+                    Need to strengthen
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="glass border-white/10 bg-gradient-to-br from-red-500/10 to-red-600/5">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-gray-400 text-sm mb-2">Missing Skills</p>
+                      <p className="text-red-400 text-3xl font-bold">
+                        {getSkillsByStatus('missing').length}
+                      </p>
+                    </div>
+                    <Target className="h-12 w-12 text-red-400 opacity-20" />
+                  </div>
+                  <p className="text-gray-400 text-xs mt-3">
+                    Need to acquire
+                  </p>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Action Buttons */}
-            <div className="text-center">
-              <Button asChild className="bg-primary hover:bg-primary/90">
-                <Link href="/roadmap">
+            {/* 3. CRITICAL POINTS & HIGHLIGHTS */}
+            {analysisMode === 'job' && aiSkillGapAnalysis && (
+              <Card className="glass border-white/10 bg-gradient-to-r from-orange-500/10 via-red-500/10 to-orange-500/10">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <Zap className="h-5 w-5 text-orange-400" />
+                    Critical Points & Priority Assessment
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid lg:grid-cols-3 gap-4">
+                    {/* High Priority */}
+                    <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20">
+                      <h4 className="text-red-400 font-bold mb-3 flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4" />
+                        HIGH PRIORITY ({(aiSkillGapAnalysis.priority_classification?.high_priority || []).length})
+                      </h4>
+                      <div className="space-y-2">
+                        {(aiSkillGapAnalysis.priority_classification?.high_priority || []).length > 0 ? (
+                          aiSkillGapAnalysis.priority_classification!.high_priority.map((skill, i) => (
+                            <div key={i} className="flex items-start gap-2">
+                              <span className="text-red-400 font-bold">•</span>
+                              <span className="text-gray-300 text-sm">{skill}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-gray-400 text-sm">No critical gaps</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Medium Priority */}
+                    <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                      <h4 className="text-yellow-400 font-bold mb-3 flex items-center gap-2">
+                        <Lightbulb className="h-4 w-4" />
+                        MEDIUM PRIORITY ({(aiSkillGapAnalysis.priority_classification?.medium_priority || []).length})
+                      </h4>
+                      <div className="space-y-2">
+                        {(aiSkillGapAnalysis.priority_classification?.medium_priority || []).length > 0 ? (
+                          aiSkillGapAnalysis.priority_classification!.medium_priority.map((skill, i) => (
+                            <div key={i} className="flex items-start gap-2">
+                              <span className="text-yellow-400 font-bold">•</span>
+                              <span className="text-gray-300 text-sm">{skill}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-gray-400 text-sm">None</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Low Priority */}
+                    <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+                      <h4 className="text-green-400 font-bold mb-3 flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4" />
+                        NICE-TO-HAVE ({(aiSkillGapAnalysis.priority_classification?.low_priority || []).length})
+                      </h4>
+                      <div className="space-y-2">
+                        {(aiSkillGapAnalysis.priority_classification?.low_priority || []).length > 0 ? (
+                          aiSkillGapAnalysis.priority_classification!.low_priority.map((skill, i) => (
+                            <div key={i} className="flex items-start gap-2">
+                              <span className="text-green-400 font-bold">•</span>
+                              <span className="text-gray-300 text-sm">{skill}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-gray-400 text-sm">None</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* 4. SKILL CATEGORIZATION VIEW - Detailed Breakdown */}
+            <Card className="glass border-white/10">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Microscope className="h-5 w-5 text-cyan-400" />
+                  Detailed Skill Analysis by Category
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {/* Technical Skills */}
+                  <div className="space-y-3">
+                    <h4 className="text-white font-bold text-lg flex items-center gap-2">
+                      <span className="w-1 h-6 bg-blue-500 rounded"></span>
+                      Technical Skills
+                    </h4>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-gray-600">
+                            <th className="text-left text-gray-400 py-2 px-3 text-sm">Skill</th>
+                            <th className="text-left text-gray-400 py-2 px-3 text-sm">Job Needs</th>
+                            <th className="text-left text-gray-400 py-2 px-3 text-sm">Your Level</th>
+                            <th className="text-left text-gray-400 py-2 px-3 text-sm">Status</th>
+                            <th className="text-left text-gray-400 py-2 px-3 text-sm">Progress</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {skillGapData.filter(s => s.category === 'technical').map((skill, idx) => (
+                            <tr key={idx} className="border-b border-gray-700/50 hover:bg-white/5 transition">
+                              <td className="py-3 px-3 text-white font-medium text-sm">{skill.skill}</td>
+                              <td className="py-3 px-3 text-gray-300 text-sm">{getSkillLevelLabel(skill.required)}</td>
+                              <td className="py-3 px-3 text-gray-300 text-sm">
+                                {skill.current > 0 ? getSkillLevelLabel(skill.current) : 'No experience'}
+                              </td>
+                              <td className="py-3 px-3">
+                                <Badge className={`text-xs border ${
+                                  skill.status === 'match' ? 'bg-green-500/20 text-green-300 border-green-500/30' :
+                                  skill.status === 'partial' ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' :
+                                  'bg-red-500/20 text-red-300 border-red-500/30'
+                                }`}>
+                                  {skill.status === 'match' ? '✓ Match' : skill.status === 'partial' ? '⚠ Partial' : '✗ Missing'}
+                                </Badge>
+                              </td>
+                              <td className="py-3 px-3">
+                                <div className="w-20 h-2 bg-gray-700 rounded-full overflow-hidden">
+                                  <div 
+                                    className={`h-full transition-all ${
+                                      skill.status === 'match' ? 'bg-green-500' :
+                                      skill.status === 'partial' ? 'bg-yellow-500' :
+                                      'bg-red-500'
+                                    }`}
+                                    style={{ width: `${Math.min(100, (skill.current / skill.required) * 100)}%` }}
+                                  />
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Tools & Frameworks */}
+                  {skillGapData.some(s => s.category === 'tool') && (
+                    <div className="space-y-3">
+                      <h4 className="text-white font-bold text-lg flex items-center gap-2">
+                        <span className="w-1 h-6 bg-purple-500 rounded"></span>
+                        Tools & Frameworks
+                      </h4>
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-gray-600">
+                              <th className="text-left text-gray-400 py-2 px-3 text-sm">Tool</th>
+                              <th className="text-left text-gray-400 py-2 px-3 text-sm">Priority</th>
+                              <th className="text-left text-gray-400 py-2 px-3 text-sm">Status</th>
+                              <th className="text-left text-gray-400 py-2 px-3 text-sm">Gap</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {skillGapData.filter(s => s.category === 'tool').map((skill, idx) => (
+                              <tr key={idx} className="border-b border-gray-700/50 hover:bg-white/5 transition">
+                                <td className="py-3 px-3 text-white font-medium text-sm">{skill.skill}</td>
+                                <td className="py-3 px-3 text-gray-300 text-sm">
+                                  {skill.gapPercentage > 75 ? 'High' : skill.gapPercentage > 25 ? 'Medium' : 'Low'}
+                                </td>
+                                <td className="py-3 px-3">
+                                  <Badge className={`text-xs border ${
+                                    skill.status === 'match' ? 'bg-green-500/20 text-green-300 border-green-500/30' :
+                                    skill.status === 'partial' ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' :
+                                    'bg-red-500/20 text-red-300 border-red-500/30'
+                                  }`}>
+                                    {skill.status === 'match' ? 'Have it' : skill.status === 'partial' ? 'Partial' : 'Need it'}
+                                  </Badge>
+                                </td>
+                                <td className="py-3 px-3 text-gray-300 text-sm">{Math.round(skill.gapPercentage)}%</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Soft Skills */}
+                  {skillGapData.some(s => s.category === 'soft') && (
+                    <div className="space-y-3">
+                      <h4 className="text-white font-bold text-lg flex items-center gap-2">
+                        <span className="w-1 h-6 bg-pink-500 rounded"></span>
+                        Soft Skills
+                      </h4>
+                      <div className="grid md:grid-cols-2 gap-3">
+                        {skillGapData.filter(s => s.category === 'soft').map((skill, idx) => (
+                          <div key={idx} className="p-3 bg-white/5 border border-white/10 rounded-lg">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-white font-medium">{skill.skill}</span>
+                              <Badge className={`text-xs border ${
+                                skill.status === 'match' ? 'bg-green-500/20 text-green-300 border-green-500/30' :
+                                skill.status === 'partial' ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' :
+                                'bg-red-500/20 text-red-300 border-red-500/30'
+                              }`}>
+                                {skill.status === 'match' ? '✓' : skill.status === 'partial' ? '⚠' : '✗'}
+                              </Badge>
+                            </div>
+                            <div className="w-full h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                              <div 
+                                className={`h-full ${
+                                  skill.status === 'match' ? 'bg-green-500' :
+                                  skill.status === 'partial' ? 'bg-yellow-500' :
+                                  'bg-red-500'
+                                }`}
+                                style={{ width: `${Math.min(100, (skill.current / skill.required) * 100)}%` }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 5. RESUME EVIDENCE MAPPING */}
+            <Card className="glass border-white/10">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Users className="h-5 w-5 text-indigo-400" />
+                  Where Skills Were Found in Your Resume
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {getSkillsByStatus('match').length > 0 && (
+                  <div>
+                    <h4 className="text-green-400 font-semibold mb-3">Matched Skills</h4>
+                    <div className="space-y-2">
+                      {getSkillsByStatus('match').slice(0, 5).map((skill, idx) => (
+                        <div key={idx} className="p-3 bg-green-500/5 border border-green-500/20 rounded-lg">
+                          <p className="text-white font-medium text-sm">{skill.skill}</p>
+                          <p className="text-gray-400 text-xs mt-1">
+                            Found in: Work Experience • Skills Section • Projects
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 6. ACTION-ORIENTED RECOMMENDATIONS & ROADMAP */}
+            {analysisMode === 'job' && aiSkillGapAnalysis && (
+              <Card className="glass border-white/10 bg-gradient-to-r from-cyan-500/10 to-blue-500/10">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <Map className="h-5 w-5 text-cyan-400" />
+                    Your Learning Roadmap
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {aiSkillGapAnalysis.gap_insights && aiSkillGapAnalysis.gap_insights.length > 0 && (
+                    <div className="p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
+                      <h4 className="text-cyan-400 font-bold mb-3">Key Insights</h4>
+                      <ul className="space-y-2">
+                        {aiSkillGapAnalysis.gap_insights.map((insight, i) => (
+                          <li key={i} className="flex gap-2 text-gray-300 text-sm">
+                            <span className="text-cyan-400 font-bold">→</span>
+                            <span>{insight}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {aiSkillGapAnalysis.next_best_skill && (
+                    <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                      <h4 className="text-blue-400 font-bold mb-3">Next Skill to Learn</h4>
+                      <div className="space-y-2">
+                        <p className="text-white font-semibold text-lg">{aiSkillGapAnalysis.next_best_skill.skill}</p>
+                        <p className="text-gray-300 text-sm">{aiSkillGapAnalysis.next_best_skill.reason}</p>
+                        <p className="text-gray-400 text-xs flex items-center gap-1">
+                          <Zap className="h-3 w-3" />
+                          Estimated effort: {aiSkillGapAnalysis.next_best_skill.estimated_effort}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* 7. FINAL DECISION PANEL */}
+            <Card className={`glass border ${
+              calculateOverallMatch() >= 80 ? 'border-green-500/30 bg-green-500/10' :
+              calculateOverallMatch() >= 60 ? 'border-yellow-500/30 bg-yellow-500/10' :
+              'border-red-500/30 bg-red-500/10'
+            }`}>
+              <CardHeader>
+                <CardTitle className={`flex items-center gap-2 ${
+                  calculateOverallMatch() >= 80 ? 'text-green-400' :
+                  calculateOverallMatch() >= 60 ? 'text-yellow-400' :
+                  'text-red-400'
+                }`}>
+                  <Target className="h-5 w-5" />
+                  Job Readiness Verdict
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <div className={`text-3xl font-bold ${
+                    calculateOverallMatch() >= 80 ? 'text-green-400' :
+                    calculateOverallMatch() >= 60 ? 'text-yellow-400' :
+                    'text-red-400'
+                  }`}>
+                    {calculateOverallMatch() >= 80 ? '✓ READY TO APPLY' : 
+                     calculateOverallMatch() >= 60 ? '⚠ NEEDS UPSKILLING' :
+                     '✗ REQUIRES SIGNIFICANT PREPARATION'}
+                  </div>
+                </div>
+                <p className={`text-sm ${
+                  calculateOverallMatch() >= 80 ? 'text-green-300' :
+                  calculateOverallMatch() >= 60 ? 'text-yellow-300' :
+                  'text-red-300'
+                }`}>
+                  {calculateOverallMatch() >= 80 
+                    ? 'You have strong alignment with this role. Consider applying now and continuing to develop secondary skills.'
+                    : calculateOverallMatch() >= 60 
+                    ? 'You have good foundational skills but should focus on the identified gaps. Plan 1-2 months of focused learning.'
+                    : 'Significant skill gaps exist. Dedicate 2-4 months to acquire critical skills before applying.'}
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* 8. ACTION BUTTONS */}
+            <div className="grid md:grid-cols-3 gap-4">
+              <Button asChild className="bg-blue-600 hover:bg-blue-700 h-12">
+                <Link href="/skill-roadmap" className="flex items-center justify-center gap-2">
+                  <Map className="h-4 w-4" />
                   Get Personalized Roadmap
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+              <Button asChild className="bg-purple-600 hover:bg-purple-700 h-12">
+                <Link href="/analyzer" className="flex items-center justify-center gap-2">
+                  <BarChart3 className="h-4 w-4" />
+                  Analyze Another Job
+                </Link>
+              </Button>
+              <Button asChild className="bg-cyan-600 hover:bg-cyan-700 h-12">
+                <Link href="/resume-analyzer" className="flex items-center justify-center gap-2">
+                  <BookOpen className="h-4 w-4" />
+                  Resume Analysis
                 </Link>
               </Button>
             </div>

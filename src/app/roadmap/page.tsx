@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Navbar } from '@/components/Navbar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -19,7 +20,11 @@ import {
   ExternalLink,
   ChevronDown,
   ChevronUp,
-  Target
+  Target,
+  Briefcase,
+  GraduationCap,
+  Zap,
+  ArrowRight
 } from 'lucide-react'
 
 interface CourseSession {
@@ -971,7 +976,192 @@ export default function Roadmap() {
             })}
           </div>
         </div>
+
+        {/* Courses Section */}
+        <div className="mt-16 pt-12 border-t border-white/10">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-secondary/20 text-secondary border border-secondary/30 mb-4">
+              <GraduationCap className="h-4 w-4 mr-2" />
+              Complete Learning Pathway
+            </div>
+            <h2 className="text-3xl font-bold gradient-text mb-2 font-space-grotesk">
+              Comprehensive Courses
+            </h2>
+            <p className="text-gray-400">
+              8 complete courses designed to build your professional skills from fundamentals to advanced
+            </p>
+          </div>
+
+          {/* Course Overview Cards */}
+          <CoursesOverview />
+
+          {/* View All Courses Button */}
+          <div className="text-center mt-8">
+            <Link href="/courses">
+              <Button className="bg-primary hover:bg-primary/90 text-white gap-2">
+                <Briefcase className="h-4 w-4" />
+                View All Courses
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
+        </div>
       </div>
+    </div>
+  )
+}
+
+interface CoursesOverviewProps {}
+
+function CoursesOverview() {
+  const [completedCourses, setCompletedCourses] = useState<string[]>([])
+  const router = useRouter()
+
+  useEffect(() => {
+    const saved = localStorage.getItem('completedCourses')
+    if (saved) {
+      setCompletedCourses(JSON.parse(saved))
+    }
+  }, [])
+
+  const courses = [
+    {
+      id: 'model-1',
+      model: '1',
+      title: 'JavaScript Fundamentals',
+      color: 'from-yellow-500 to-orange-600',
+      icon: Code2,
+      duration: '4 weeks',
+      level: 'Beginner',
+      modules: 7
+    },
+    {
+      id: 'model-2',
+      model: '2',
+      title: 'TypeScript Mastery',
+      color: 'from-blue-500 to-blue-600',
+      icon: Code2,
+      duration: '3 weeks',
+      level: 'Intermediate',
+      modules: 7
+    },
+    {
+      id: 'model-3',
+      model: '3',
+      title: 'React & Advanced Patterns',
+      color: 'from-cyan-500 to-cyan-600',
+      icon: Code2,
+      duration: '4 weeks',
+      level: 'Intermediate',
+      modules: 7
+    },
+    {
+      id: 'model-4',
+      model: '4',
+      title: 'State Management & Redux',
+      color: 'from-purple-500 to-purple-600',
+      icon: Zap,
+      duration: '3 weeks',
+      level: 'Advanced',
+      modules: 7
+    },
+    {
+      id: 'model-5',
+      model: '5',
+      title: 'Backend Node.js & Express',
+      color: 'from-green-500 to-green-600',
+      icon: Briefcase,
+      duration: '4 weeks',
+      level: 'Intermediate',
+      modules: 7
+    },
+    {
+      id: 'model-6',
+      model: '6',
+      title: 'Database Design & SQL',
+      color: 'from-red-500 to-red-600',
+      icon: BookOpen,
+      duration: '3 weeks',
+      level: 'Intermediate',
+      modules: 7
+    },
+    {
+      id: 'model-7',
+      model: '7',
+      title: 'Testing & QA',
+      color: 'from-indigo-500 to-indigo-600',
+      icon: Trophy,
+      duration: '3 weeks',
+      level: 'Intermediate',
+      modules: 7
+    },
+    {
+      id: 'model-8',
+      model: '8',
+      title: 'Full Stack & Deployment',
+      color: 'from-pink-500 to-pink-600',
+      icon: Briefcase,
+      duration: '4 weeks',
+      level: 'Advanced',
+      modules: 7
+    },
+  ]
+
+  return (
+    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      {courses.map((course) => {
+        const isCompleted = completedCourses.includes(course.id)
+        const IconComponent = course.icon
+
+        return (
+          <Card 
+            key={course.id}
+            className={`glass border-white/10 hover-lift overflow-hidden cursor-pointer transition-all ${
+              isCompleted ? 'ring-2 ring-success/50' : ''
+            }`}
+            onClick={() => router.push(`/courses/${course.id}`)}
+          >
+            <div className={`h-2 bg-gradient-to-r ${course.color}`} />
+            
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between mb-3">
+                <div className={`p-2 rounded-lg bg-gradient-to-r ${course.color} bg-opacity-20`}>
+                  <IconComponent className="h-4 w-4 text-white" />
+                </div>
+                {isCompleted && (
+                  <CheckCircle2 className="h-5 w-5 text-success" />
+                )}
+              </div>
+
+              <h3 className="font-semibold text-white mb-1 line-clamp-2">{course.title}</h3>
+              <div className="flex items-center gap-1 mb-3">
+                <Badge variant="outline" className="text-xs bg-white/5">
+                  Model {course.model}
+                </Badge>
+              </div>
+
+              <div className="space-y-2 text-xs text-gray-400 mb-3">
+                <div className="flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {course.duration}
+                </div>
+                <div className="flex items-center gap-1">
+                  <BookOpen className="h-3 w-3" />
+                  {course.modules} modules
+                </div>
+              </div>
+
+              <Badge className={`text-xs w-full text-center justify-center ${
+                isCompleted 
+                  ? 'bg-success/20 text-success border-success/30' 
+                  : 'bg-primary/20 text-primary border-primary/30'
+              }`}>
+                {isCompleted ? 'Completed ✓' : course.level}
+              </Badge>
+            </CardContent>
+          </Card>
+        )
+      })}
     </div>
   )
 }

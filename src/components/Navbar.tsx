@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Menu, X, Brain, TrendingUp, User, Target, BookOpen, Target as TargetIcon, Award, Palette } from 'lucide-react'
+import { Menu, X, Brain, TrendingUp, User, Target, BookOpen, Award, Palette, Map } from 'lucide-react'
 import { Fragment } from 'react'
 
 export function Navbar() {
@@ -22,11 +22,12 @@ export function Navbar() {
   const navigation = [
     { name: 'Home', href: '/', icon: Brain },
     { name: 'JD Analyzer', href: '/analyzer', icon: TrendingUp },
+    { name: 'Courses', href: '/courses', icon: BookOpen },
     { name: 'Profile', href: '/profile', icon: User },
     { name: 'Skill Gap', href: '/skill-gap', icon: Target },
-    { name: 'Roadmap', href: '/roadmap', icon: BookOpen },
-    { name: 'Practice', href: '/practice', icon: TargetIcon },
-    { name: 'Progress', href: '/progress', icon: Award },
+    { name: 'Roadmap', href: '/skill-roadmap', icon: Map },
+    { name: 'Practice', href: '/practice', icon: Award },
+    { name: 'Progress', href: '/progress', icon: Palette },
   ]
 
   return (
