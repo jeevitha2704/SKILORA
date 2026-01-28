@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Navbar } from '@/components/Navbar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -23,7 +24,19 @@ import {
   Lock,
   Star,
   Calendar,
-  Brain
+  Brain,
+  Zap,
+  Flame,
+  Award,
+  ArrowRight,
+  Menu,
+  Filter,
+  TrendingUp,
+  Users,
+  BookOpen,
+  Grid3x3,
+  List,
+  ChevronRight
 } from 'lucide-react'
 
 interface Challenge {
@@ -1070,115 +1083,190 @@ export default function Practice() {
     })
   }
 
-  const ChallengeCard = ({ challenge }: { challenge: Challenge }) => (
-    <Card className={`glass hover-lift interactive transition-all duration-300 ${
-      challenge.completed ? 'opacity-75' : ''
-    }`}>
-      <CardContent className="p-6">
-        {challenge.completed && (
-          <div className="absolute top-4 right-4">
-            <CheckCircle2 className="h-6 w-6 text-success" />
-          </div>
-        )}
+  const ChallengeCard = ({ challenge }: { challenge: Challenge }) => {
+    const difficultyGradient = {
+      easy: 'from-emerald-500/20 to-teal-500/20 border-emerald-500/30',
+      medium: 'from-amber-500/20 to-orange-500/20 border-amber-500/30',
+      hard: 'from-red-500/20 to-pink-500/20 border-red-500/30'
+    };
+    
+    const difficultyIcon = {
+      easy: '🌱',
+      medium: '⚡',
+      hard: '🔥'
+    };
+
+    return (
+      <Card className={`glass hover-lift interactive transition-all duration-300 overflow-hidden group relative ${
+        challenge.completed ? 'opacity-75' : ''
+      }`}>
+        {/* Gradient background by difficulty */}
+        <div className={`absolute inset-0 bg-gradient-to-br ${difficultyGradient[challenge.difficulty]} -z-10`} />
         
-        <div className="mb-4">
-          <h3 className="text-xl font-semibold text-white mb-2">{challenge.title}</h3>
-          <p className="text-gray-300 text-sm line-clamp-2">{challenge.description}</p>
-        </div>
+        {/* Top gradient accent */}
+        <div className={`h-1 bg-gradient-to-r ${
+          challenge.difficulty === 'easy' ? 'from-emerald-500 to-teal-600' :
+          challenge.difficulty === 'medium' ? 'from-amber-500 to-orange-600' :
+          'from-red-500 to-pink-600'
+        }`} />
 
-        <div className="flex items-center gap-2 mb-4">
-          <Badge className={getDifficultyColor(challenge.difficulty)}>
-            {challenge.difficulty}
-          </Badge>
-          <div className="flex items-center gap-1 text-gray-400 text-sm">
-            <Clock className="h-4 w-4" />
-            <span>{challenge.duration}</span>
+        <CardContent className="p-6 relative z-10">
+          {challenge.completed && (
+            <div className="absolute top-4 right-4 bg-emerald-500/20 border border-emerald-500/50 rounded-full p-2">
+              <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+            </div>
+          )}
+          
+          <div className="mb-4">
+            <div className="flex items-start justify-between mb-2">
+              <h3 className="text-lg font-bold text-white group-hover:text-primary transition-colors">{challenge.title}</h3>
+              <span className="text-xl">{difficultyIcon[challenge.difficulty]}</span>
+            </div>
+            <p className="text-gray-400 text-sm line-clamp-2">{challenge.description}</p>
           </div>
-        </div>
 
-        <div className="flex flex-wrap gap-2 mb-4">
-          {challenge.skills.map((skill: string, index: number) => (
-            <Badge key={index} variant="secondary" className="text-xs bg-primary/10 border-primary/30 text-primary">
-              {skill}
+          {/* Stats row */}
+          <div className="flex items-center gap-3 mb-4 pb-4 border-b border-white/10">
+            <div className="flex items-center gap-1">
+              <Badge className={getDifficultyColor(challenge.difficulty)}>
+                {challenge.difficulty}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-1 text-gray-400 text-xs">
+              <Clock className="h-3 w-3" />
+              <span>{challenge.duration}</span>
+            </div>
+          </div>
+
+          {/* Skills */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            {challenge.skills.map((skill: string, index: number) => (
+              <Badge key={index} variant="secondary" className="text-xs bg-primary/20 border-primary/40 text-primary/90">
+                {skill}
+              </Badge>
+            ))}
+          </div>
+
+          {/* Action button */}
+          <Button 
+            className={`w-full hover-lift font-semibold ${
+              challenge.completed 
+                ? 'border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/20' 
+                : 'bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white'
+            }`}
+            variant={challenge.completed ? "outline" : "default"}
+            onClick={() => startChallenge(challenge)}
+          >
+            {challenge.completed ? (
+              <>
+                <Eye className="h-4 w-4 mr-2" />
+                Review Solution
+              </>
+            ) : (
+              <>
+                <Play className="h-4 w-4 mr-2" />
+                Start Challenge
+              </>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const BehavioralCard = ({ question }: { question: BehavioralQuestion }) => {
+    const categoryGradient: Record<string, string> = {
+      'Communication': 'from-blue-500/20 to-cyan-500/20 border-blue-500/30',
+      'Leadership': 'from-purple-500/20 to-pink-500/20 border-purple-500/30',
+      'Problem Solving': 'from-green-500/20 to-emerald-500/20 border-green-500/30',
+      'Conflict Resolution': 'from-orange-500/20 to-red-500/20 border-orange-500/30',
+      'Time Management': 'from-indigo-500/20 to-blue-500/20 border-indigo-500/30'
+    };
+
+    const categoryIcon: Record<string, string> = {
+      'Communication': '💬',
+      'Leadership': '👑',
+      'Problem Solving': '🧠',
+      'Conflict Resolution': '⚖️',
+      'Time Management': '⏱️'
+    };
+
+    const gradientAccent: Record<string, string> = {
+      'Communication': 'from-blue-500 to-cyan-600',
+      'Leadership': 'from-purple-500 to-pink-600',
+      'Problem Solving': 'from-green-500 to-emerald-600',
+      'Conflict Resolution': 'from-orange-500 to-red-600',
+      'Time Management': 'from-indigo-500 to-blue-600'
+    };
+
+    return (
+      <Card className={`glass hover-lift interactive transition-all duration-300 overflow-hidden group relative ${
+        question.completed ? 'opacity-75' : ''
+      }`}>
+        {/* Gradient background by category */}
+        <div className={`absolute inset-0 bg-gradient-to-br ${categoryGradient[question.category] || 'from-purple-500/20 to-pink-500/20 border-purple-500/30'} -z-10`} />
+        
+        {/* Top gradient accent */}
+        <div className={`h-1 bg-gradient-to-r ${gradientAccent[question.category] || 'from-purple-500 to-pink-600'}`} />
+
+        <CardContent className="p-6 relative z-10">
+          {question.completed && (
+            <div className="absolute top-4 right-4 bg-emerald-500/20 border border-emerald-500/50 rounded-full p-2">
+              <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+            </div>
+          )}
+          
+          <div className="mb-4">
+            <div className="flex items-start justify-between mb-2">
+              <h3 className="text-lg font-bold text-white group-hover:text-primary transition-colors">{question.category}</h3>
+              <span className="text-xl">{categoryIcon[question.category] || '❓'}</span>
+            </div>
+            <p className="text-gray-400 text-sm line-clamp-3">{question.question}</p>
+          </div>
+
+          {/* Info row */}
+          <div className="flex items-center gap-3 mb-4 pb-4 border-b border-white/10">
+            <Badge className={getDifficultyColor(question.difficulty)}>
+              {question.difficulty}
             </Badge>
-          ))}
-        </div>
-
-        <Button 
-          className={`w-full hover-lift ${
-            challenge.completed 
-              ? 'border-success/20 text-success hover:bg-success/10' 
-              : 'bg-primary hover:bg-primary/90 text-primary-foreground'
-          }`}
-          variant={challenge.completed ? "outline" : "default"}
-          onClick={() => startChallenge(challenge)}
-        >
-          {challenge.completed ? (
-            <>
-              <Eye className="h-4 w-4 mr-2" />
-              Review Solution
-            </>
-          ) : (
-            <>
-              <Play className="h-4 w-4 mr-2" />
-              Start Challenge
-            </>
-          )}
-        </Button>
-      </CardContent>
-    </Card>
-  )
-
-  const BehavioralCard = ({ question }: { question: BehavioralQuestion }) => (
-    <Card className={`glass hover-lift interactive transition-all duration-300 ${
-      question.completed ? 'opacity-75' : ''
-    }`}>
-      <CardContent className="p-6">
-        {question.completed && (
-          <div className="absolute top-4 right-4">
-            <CheckCircle2 className="h-6 w-6 text-success" />
+            <div className="flex items-center gap-1 text-gray-400 text-xs">
+              <MessageSquare className="h-3 w-3" />
+              <span>Behavioral Interview</span>
+            </div>
           </div>
-        )}
-        
-        <div className="mb-4">
-          <h3 className="text-xl font-semibold text-white mb-2">{question.category}</h3>
-          <p className="text-gray-300 text-sm line-clamp-3">{question.question}</p>
-        </div>
 
-        <div className="flex items-center gap-2 mb-4">
-          <Badge className={getDifficultyColor(question.difficulty)}>
-            {question.difficulty}
-          </Badge>
-          <div className="flex items-center gap-1 text-gray-400 text-sm">
-            <MessageSquare className="h-4 w-4" />
-            <span>Behavioral</span>
+          {/* Tips preview */}
+          <div className="mb-4 p-2 bg-white/5 rounded text-xs text-gray-400 border border-white/10">
+            <p className="font-semibold text-white mb-1">💡 Tip</p>
+            <p className="line-clamp-2">Focus on specific examples and the STAR method when answering</p>
           </div>
-        </div>
 
-        <Button 
-          className={`w-full hover-lift ${
-            question.completed 
-              ? 'border-success/20 text-success hover:bg-success/10' 
-              : 'bg-primary hover:bg-primary/90 text-primary-foreground'
-          }`}
-          variant={question.completed ? "outline" : "default"}
-          onClick={() => startBehavioralPractice(question)}
-        >
-          {question.completed ? (
-            <>
-              <Eye className="h-4 w-4 mr-2" />
-              Review Answer
-            </>
-          ) : (
-            <>
-              <Play className="h-4 w-4 mr-2" />
-              Start Practice
-            </>
-          )}
-        </Button>
-      </CardContent>
-    </Card>
-  )
+          {/* Action button */}
+          <Button 
+            className={`w-full hover-lift font-semibold ${
+              question.completed 
+                ? 'border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/20' 
+                : 'bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white'
+            }`}
+            variant={question.completed ? "outline" : "default"}
+            onClick={() => startBehavioralPractice(question)}
+          >
+            {question.completed ? (
+              <>
+                <Eye className="h-4 w-4 mr-2" />
+                Review Answer
+              </>
+            ) : (
+              <>
+                <Play className="h-4 w-4 mr-2" />
+                Start Practice
+              </>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
 
   if (loading) {
     return (
@@ -1195,75 +1283,121 @@ export default function Practice() {
       <Navbar />
       
       <div className="max-w-7xl mx-auto px-4 pt-24 py-8">
-        {/* Header */}
-        <div className="text-center mb-8 animate-fade-in">
-          <h1 className="text-4xl font-bold gradient-text mb-4 font-space-grotesk">
-            Practice Hub
+        {/* Enhanced Header */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-primary/20 text-primary border border-primary/30 mb-4">
+            <Zap className="h-4 w-4 mr-2" />
+            Interactive Practice Platform
+          </div>
+          <h1 className="text-5xl font-bold gradient-text mb-3 font-space-grotesk">
+            Practice Hub 💪
           </h1>
-          <p className="text-xl text-gray-300">
-            Sharpen your skills with coding challenges and behavioral prep
+          <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+            Master coding challenges, ace behavioral interviews, and level up your skills with hands-on practice
           </p>
         </div>
 
-        {/* Stats Row */}
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
-          <Card className="glass-teal hover-lift animate-scale-in">
-            <CardContent className="p-6 text-center">
-              <Trophy className="h-8 w-8 text-primary mx-auto mb-3" />
-              <div className="text-2xl font-bold text-white mb-1">{stats.completed}</div>
-              <div className="text-sm text-gray-400">Completed Challenges</div>
+        {/* Enhanced Stats Cards with Gradients */}
+        <div className="grid md:grid-cols-4 gap-4 mb-8">
+          {/* Completed Challenges */}
+          <Card className="glass hover-lift border-white/10 overflow-hidden">
+            <div className="h-1 bg-gradient-to-r from-emerald-500 to-teal-600" />
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+                <Badge className="bg-emerald-500/20 text-emerald-400">Active</Badge>
+              </div>
+              <p className="text-gray-400 text-sm mb-1">Completed</p>
+              <p className="text-3xl font-bold text-white">{stats.completed}</p>
+              <p className="text-xs text-gray-500 mt-2">challenges solved</p>
             </CardContent>
           </Card>
 
-          <Card className="glass-orange hover-lift animate-scale-in" style={{animationDelay: '0.1s'}}>
-            <CardContent className="p-6 text-center">
-              <Target className="h-8 w-8 text-accent mx-auto mb-3" />
-              <div className="text-2xl font-bold text-white mb-1">{stats.progress}%</div>
-              <div className="text-sm text-gray-400">Total Progress</div>
+          {/* Overall Progress */}
+          <Card className="glass hover-lift border-white/10 overflow-hidden">
+            <div className="h-1 bg-gradient-to-r from-blue-500 to-cyan-600" />
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <TrendingUp className="h-6 w-6 text-blue-500" />
+                <Badge className="bg-blue-500/20 text-blue-400">{stats.progress}%</Badge>
+              </div>
+              <p className="text-gray-400 text-sm mb-1">Overall Progress</p>
+              <ProgressBar value={stats.progress} className="h-2 mb-2" />
+              <p className="text-xs text-gray-500">keep pushing forward</p>
             </CardContent>
           </Card>
 
-          <Card className="glass-green hover-lift animate-scale-in" style={{animationDelay: '0.2s'}}>
-            <CardContent className="p-6 text-center">
-              <Brain className="h-8 w-8 text-success mx-auto mb-3" />
-              <div className="text-2xl font-bold text-white mb-1">{stats.avgScore}</div>
-              <div className="text-sm text-gray-400">Average Score</div>
+          {/* Average Score */}
+          <Card className="glass hover-lift border-white/10 overflow-hidden">
+            <div className="h-1 bg-gradient-to-r from-purple-500 to-pink-600" />
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <Award className="h-6 w-6 text-purple-500" />
+                <Badge className="bg-purple-500/20 text-purple-400">Score</Badge>
+              </div>
+              <p className="text-gray-400 text-sm mb-1">Average Score</p>
+              <p className="text-3xl font-bold text-white">{stats.avgScore}%</p>
+              <p className="text-xs text-gray-500 mt-2">across all attempts</p>
+            </CardContent>
+          </Card>
+
+          {/* Current Streak */}
+          <Card className="glass hover-lift border-white/10 overflow-hidden">
+            <div className="h-1 bg-gradient-to-r from-orange-500 to-red-600" />
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <Flame className="h-6 w-6 text-orange-500" />
+                <Badge className="bg-orange-500/20 text-orange-400">Streak</Badge>
+              </div>
+              <p className="text-gray-400 text-sm mb-1">Current Streak</p>
+              <p className="text-3xl font-bold text-white">5</p>
+              <p className="text-xs text-gray-500 mt-2">days of practice</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Main Content */}
+        {/* Enhanced Tabs */}
         <Tabs defaultValue="coding" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 bg-background/50 border-white/20">
-            <TabsTrigger value="coding" className="text-white data-[state=active]:bg-primary/20">
-              <Code2 className="h-4 w-4 mr-2" />
-              Coding Challenges
-            </TabsTrigger>
-            <TabsTrigger value="behavioral" className="text-white data-[state=active]:bg-primary/20">
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Behavioral Prep
-            </TabsTrigger>
-          </TabsList>
+          <div className="mb-6 flex items-center justify-between">
+            <TabsList className="bg-background/50 border border-white/10 rounded-lg p-1">
+              <TabsTrigger value="coding" className="rounded data-[state=active]:bg-primary/20 data-[state=active]:text-primary text-gray-400">
+                <Code2 className="h-4 w-4 mr-2" />
+                Coding Challenges
+              </TabsTrigger>
+              <TabsTrigger value="behavioral" className="rounded data-[state=active]:bg-primary/20 data-[state=active]:text-primary text-gray-400">
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Behavioral Prep
+              </TabsTrigger>
+            </TabsList>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" className="border-white/20">
+                <Filter className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
 
           {/* Coding Challenges Tab */}
           <TabsContent value="coding" className="mt-6">
-            {/* Category Filters */}
-            <div className="flex flex-wrap gap-2 mb-6">
-              {getCategories().map((category) => (
-                <Button
-                  key={category}
-                  variant={selectedCategory === category ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedCategory(category)}
-                  className={
-                    selectedCategory === category
-                      ? "bg-primary hover:bg-primary/90 text-primary-foreground"
-                      : "border-white/20 text-white hover:bg-white/10"
-                  }
-                >
-                  {category}
-                </Button>
-              ))}
+            {/* Category Filters with Enhanced Styling */}
+            <div className="mb-6">
+              <p className="text-sm text-gray-400 mb-3 font-semibold">Filter by Category</p>
+              <div className="flex flex-wrap gap-2">
+                {getCategories().map((category) => (
+                  <Button
+                    key={category}
+                    variant={selectedCategory === category ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSelectedCategory(category)}
+                    className={
+                      selectedCategory === category
+                        ? "bg-primary hover:bg-primary/90 text-white"
+                        : "border-white/20 text-gray-400 hover:text-white hover:border-white/40"
+                    }
+                  >
+                    {category}
+                  </Button>
+                ))}
+              </div>
             </div>
 
             {/* Challenges Grid */}

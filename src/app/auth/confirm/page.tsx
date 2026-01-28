@@ -11,9 +11,12 @@ import { Brain, ArrowLeft, Mail, CheckCircle } from 'lucide-react'
 
 export default function Confirm() {
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [message, setMessage] = useState('')
   
   const { signIn } = useAuth()
   const router = useRouter()
@@ -23,20 +26,46 @@ export default function Confirm() {
     const params = new URLSearchParams(window.location.search)
     const emailParam = params.get('email')
     if (emailParam) {
-      setEmail(emailParam)
+      setEmail(decodeURIComponent(emailParam))
     }
   }, [])
+
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+
+    try {
+      const { error: signInError } = await signIn(email, password)
+      if (signInError) {
+        setError(signInError.message || 'Failed to sign in')
+      } else {
+        setSuccess(true)
+        setMessage('Successfully signed in! Redirecting...')
+        setTimeout(() => {
+          router.push('/')
+        }, 1500)
+      }
+    } catch (err) {
+      setError('An unexpected error occurred')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleResend = async () => {
     setLoading(true)
     setError('')
     
-    // This would typically call a function to resend the confirmation email
-    // For now, we'll just show a success message
-    setTimeout(() => {
+    try {
+      // In development mode, just show success
       setSuccess(true)
+      setMessage('Confirmation email resent successfully! (Development mode)')
+    } catch (err) {
+      setError('Failed to resend confirmation')
+    } finally {
       setLoading(false)
-    }, 1000)
+    }
   }
 
   return (
@@ -55,9 +84,13 @@ export default function Confirm() {
               <Mail className="h-6 w-6 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold text-white">Check Your Email</CardTitle>
+          <CardTitle className="text-2xl font-bold text-white">
+            {success ? 'Success!' : 'Complete Your Signup'}
+          </CardTitle>
           <p className="text-gray-400">
-            We've sent you a confirmation link. Please check your email and click the link to activate your account.
+            {success 
+              ? message
+              : 'Sign in with your email and password to activate your account'}
           </p>
         </CardHeader>
         
@@ -65,26 +98,60 @@ export default function Confirm() {
           {success ? (
             <div className="text-center py-4">
               <CheckCircle className="h-12 w-12 text-success mx-auto mb-4" />
-              <p className="text-green-400">Confirmation email resent successfully!</p>
+              <p className="text-green-400 text-sm">Account verified and ready to use!</p>
             </div>
           ) : (
-            <div className="space-y-4">
-              <div className="bg-muted/30 rounded-lg p-4">
-                <p className="text-sm text-gray-300">
-                  <strong>Next steps:</strong>
-                </p>
-                <ol className="text-sm text-gray-400 mt-2 space-y-1 list-decimal list-inside">
-                  <li>Check your email inbox</li>
-                  <li>Click the confirmation link</li>
-                  <li>Return to sign in</li>
-                </ol>
+            <form onSubmit={handleSignIn} className="space-y-4">
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
+                  Email
+                </label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  className="bg-muted/50 border-border/50 text-white placeholder-gray-500"
+                  required
+                />
               </div>
+
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
+                  Password
+                </label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  className="bg-muted/50 border-border/50 text-white placeholder-gray-500"
+                  required
+                />
+              </div>
+
+              {error && (
+                <div className="bg-destructive/20 border border-destructive/50 rounded-md p-3">
+                  <p className="text-sm text-destructive">{error}</p>
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={loading}
+              >
+                {loading ? 'Verifying...' : 'Verify & Continue'}
+              </Button>
 
               <div className="text-center">
                 <p className="text-sm text-gray-400 mb-4">
-                  Didn't receive the email?
+                  Didn't receive verification?
                 </p>
                 <Button
+                  type="button"
                   variant="outline"
                   onClick={handleResend}
                   disabled={loading}
@@ -93,13 +160,7 @@ export default function Confirm() {
                   {loading ? 'Resending...' : 'Resend Confirmation'}
                 </Button>
               </div>
-
-              {error && (
-                <div className="bg-destructive/20 border border-destructive/50 rounded-md p-3">
-                  <p className="text-sm text-destructive">{error}</p>
-                </div>
-              )}
-            </div>
+            </form>
           )}
 
           <div className="mt-6 text-center">

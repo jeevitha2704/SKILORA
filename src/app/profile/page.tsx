@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Navbar } from '@/components/Navbar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -33,7 +34,11 @@ import {
   Award,
   Target,
   BookOpen,
-  ArrowRight
+  ArrowRight,
+  LogOut,
+  Camera,
+  ZoomIn,
+  ZoomOut
 } from 'lucide-react'
 
 interface Skill {
@@ -62,7 +67,11 @@ interface Profile {
 }
 
 export default function Profile() {
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
+  const router = useRouter()
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  
   const [profile, setProfile] = useState<Profile>({})
   const [skills, setSkills] = useState<Skill[]>([])
   const [projects, setProjects] = useState<Project[]>([])
@@ -70,6 +79,12 @@ export default function Profile() {
   const [isAddSkillOpen, setIsAddSkillOpen] = useState(false)
   const [isAddProjectOpen, setIsAddProjectOpen] = useState(false)
   const [editingProfile, setEditingProfile] = useState(false)
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+  const [isCropDialogOpen, setIsCropDialogOpen] = useState(false)
+  const [selectedImage, setSelectedImage] = useState<string | null>(null)
+  const [cropZoom, setCropZoom] = useState(1)
+  const [cropX, setCropX] = useState(0)
+  const [cropY, setCropY] = useState(0)
 
   const [newSkill, setNewSkill] = useState({
     skill_name: '',
@@ -89,6 +104,86 @@ export default function Profile() {
     full_name: '',
     bio: ''
   })
+
+  const handleLogout = async () => {
+    try {
+      const result = await signOut()
+      if (!result.error) {
+        router.push('/auth/signin')
+      } else {
+        alert('Error logging out')
+      }
+    } catch (error) {
+      console.error('Logout error:', error)
+      alert('Error logging out')
+    }
+  }
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        setSelectedImage(event.target?.result as string)
+        setIsCropDialogOpen(true)
+        setCropZoom(1)
+        setCropX(0)
+        setCropY(0)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const cropAndUploadImage = async () => {
+    if (!selectedImage || !canvasRef.current) return
+
+    try {
+      setIsUploadingAvatar(true)
+      const canvas = canvasRef.current
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
+
+      const img = new Image()
+      img.onload = async () => {
+        canvas.width = 256
+        canvas.height = 256
+
+        const scaledWidth = img.width * cropZoom
+        const scaledHeight = img.height * cropZoom
+        const centerX = img.width / 2
+        const centerY = img.height / 2
+        const cropStartX = centerX - scaledWidth / 2 + cropX * 50
+        const cropStartY = centerY - scaledHeight / 2 + cropY * 50
+
+        ctx.drawImage(
+          img,
+          cropStartX,
+          cropStartY,
+          scaledWidth,
+          scaledHeight,
+          0,
+          0,
+          256,
+          256
+        )
+
+        const croppedImage = canvas.toDataURL('image/jpeg', 0.9)
+        
+        // Update profile with new avatar
+        await updateProfileDB(user?.id || '', { avatar_url: croppedImage })
+        setProfile({ ...profile, avatar_url: croppedImage })
+        setIsCropDialogOpen(false)
+        setSelectedImage(null)
+        alert('Profile picture updated successfully!')
+      }
+      img.src = selectedImage
+    } catch (error) {
+      console.error('Error uploading avatar:', error)
+      alert('Error uploading avatar: ' + (error as Error).message)
+    } finally {
+      setIsUploadingAvatar(false)
+    }
+  }
 
   useEffect(() => {
     if (user) {
@@ -316,15 +411,39 @@ export default function Profile() {
       <Navbar />
       
       <div className="max-w-7xl mx-auto px-4 pt-24 py-8">
+        {/* Enhanced Header */}
+        <div className="text-center mb-12 flex flex-col items-center justify-center">
+          <div className="flex items-center justify-between w-full max-w-2xl mb-4">
+            <div className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-primary/20 text-primary border border-primary/30">
+              <User className="h-4 w-4 mr-2" />
+              Personal Profile
+            </div>
+            <Button
+              onClick={handleLogout}
+              className="bg-red-600 hover:bg-red-700 flex items-center gap-2"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign Out
+            </Button>
+          </div>
+          <h1 className="text-5xl font-bold gradient-text mb-3 font-space-grotesk">
+            Your Profile 👤
+          </h1>
+          <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+            Manage your professional information, skills, and showcase your projects
+          </p>
+        </div>
+
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Profile Section */}
+          {/* Enhanced Profile Section */}
           <div className="lg:col-span-1">
-            <Card className="glass border-white/10">
+            <Card className="glass hover-lift border-white/10 overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-blue-500 to-cyan-600" />
               <CardHeader>
                 <CardTitle className="text-white flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <User className="h-5 w-5 text-secondary" />
-                    Profile
+                    <User className="h-5 w-5 text-blue-500" />
+                    Profile Info
                   </div>
                   <Button
                     variant="ghost"
@@ -338,15 +457,35 @@ export default function Profile() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Avatar Section */}
-                <div className="flex justify-center">
-                  <div className="h-20 w-20 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-                    <Avatar className="h-16 w-16 text-white">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="h-24 w-24 rounded-full bg-gradient-to-br from-blue-500 to-cyan-600 p-1 shadow-lg relative group">
+                    <Avatar className="h-full w-full border-2 border-background">
                       <AvatarImage src={profile.avatar_url} alt={profile.full_name || user?.email} />
-                      <AvatarFallback className="bg-white text-gray-900 text-lg">
+                      <AvatarFallback className="bg-gradient-to-br from-blue-600 to-cyan-700 text-white text-2xl font-bold">
                         {(profile.full_name || user?.email)?.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+                    >
+                      <Camera className="h-6 w-6 text-white" />
+                    </button>
                   </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageSelect}
+                    className="hidden"
+                  />
+                  <Button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 w-full"
+                  >
+                    <Camera className="h-4 w-4 mr-2" />
+                    Change Photo
+                  </Button>
                 </div>
 
                 {editingProfile ? (
@@ -364,44 +503,37 @@ export default function Profile() {
                       className="bg-background/50 border-white/20 text-white min-h-[100px]"
                     />
                     <div className="flex gap-2">
-                      <Button onClick={updateProfile} className="bg-primary hover:bg-primary/90">
+                      <Button onClick={updateProfile} className="bg-primary hover:bg-primary/90 flex-1">
                         Save
                       </Button>
                       <Button
                         variant="outline"
                         onClick={() => setEditingProfile(false)}
-                        className="border-white/20 text-white hover:bg-white/10"
+                        className="border-white/20 text-white hover:bg-white/10 flex-1"
                       >
                         Cancel
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        onClick={testDatabase}
-                        className="border-white/20 text-white hover:bg-white/10"
-                      >
-                        Test DB
                       </Button>
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     <div>
-                      <h3 className="text-xl font-semibold text-white">
+                      <h3 className="text-xl font-bold text-white">
                         {profile.full_name || user?.email}
                       </h3>
                       <p className="text-gray-400 text-sm">{user?.email}</p>
                     </div>
                     {profile.bio && (
-                      <p className="text-gray-300">{profile.bio}</p>
+                      <p className="text-gray-300 text-sm">{profile.bio}</p>
                     )}
                     <div className="pt-4 border-t border-white/10">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-gray-400">Skill Score</span>
-                        <span className="text-2xl font-bold gradient-text">{calculateSkillScore()}%</span>
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-gray-400 text-sm font-semibold">Skill Score</span>
+                        <span className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">{calculateSkillScore()}%</span>
                       </div>
-                      <div className="w-full bg-gray-700 rounded-full h-2">
+                      <div className="w-full bg-gray-700/30 rounded-full h-3 overflow-hidden">
                         <div 
-                          className="bg-primary h-2 rounded-full transition-all duration-300"
+                          className="h-full bg-gradient-to-r from-blue-500 to-cyan-600 transition-all duration-300 rounded-full"
                           style={{ width: `${calculateSkillScore()}%` }}
                         />
                       </div>
@@ -414,17 +546,18 @@ export default function Profile() {
 
           {/* Skills & Projects */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Skills Section */}
-            <Card className="glass border-white/10">
+            {/* Enhanced Skills Section */}
+            <Card className="glass hover-lift border-white/10 overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-purple-500 to-pink-600" />
               <CardHeader>
                 <CardTitle className="text-white flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Star className="h-5 w-5 text-primary" />
+                    <Star className="h-5 w-5 text-purple-500" />
                     Skills ({skills.length})
                   </div>
                   <Dialog open={isAddSkillOpen} onOpenChange={setIsAddSkillOpen}>
                     <DialogTrigger asChild>
-                      <Button className="bg-primary hover:bg-primary/90">
+                      <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
                         <Plus className="h-4 w-4 mr-2" />
                         Add Skill
                       </Button>
@@ -469,13 +602,13 @@ export default function Profile() {
                           </SelectContent>
                         </Select>
                         <div className="flex gap-2">
-                          <Button onClick={addSkill} className="bg-primary hover:bg-primary/90">
+                          <Button onClick={addSkill} className="bg-primary hover:bg-primary/90 flex-1">
                             Add Skill
                           </Button>
                           <Button
                             variant="outline"
                             onClick={() => setIsAddSkillOpen(false)}
-                            className="border-white/20 text-white hover:bg-white/10"
+                            className="border-white/20 text-white hover:bg-white/10 flex-1"
                           >
                             Cancel
                           </Button>
@@ -487,8 +620,8 @@ export default function Profile() {
               </CardHeader>
               <CardContent>
                 {skills.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Star className="h-12 w-12 text-primary mx-auto mb-4 opacity-50" />
+                  <div className="text-center py-12">
+                    <Star className="h-12 w-12 text-purple-500 mx-auto mb-4 opacity-50" />
                     <h3 className="text-lg font-semibold text-white mb-2">No Skills Yet</h3>
                     <p className="text-gray-400 mb-4">Start adding your skills to build your profile</p>
                     <Button onClick={() => setIsAddSkillOpen(true)} className="bg-primary hover:bg-primary/90">
@@ -511,17 +644,18 @@ export default function Profile() {
               </CardContent>
             </Card>
 
-            {/* Projects Section */}
-            <Card className="glass-orange hover-lift">
+            {/* Enhanced Projects Section */}
+            <Card className="glass hover-lift border-white/10 overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-orange-500 to-red-600" />
               <CardHeader>
                 <CardTitle className="text-white flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <BookOpen className="h-5 w-5 text-primary" />
+                    <BookOpen className="h-5 w-5 text-orange-500" />
                     Projects ({projects.length})
                   </div>
                   <Dialog open={isAddProjectOpen} onOpenChange={setIsAddProjectOpen}>
                     <DialogTrigger asChild>
-                      <Button className="bg-primary hover:bg-primary/90">
+                      <Button className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700">
                         <Plus className="h-4 w-4 mr-2" />
                         Add Project
                       </Button>
@@ -562,13 +696,13 @@ export default function Profile() {
                           className="bg-background/50 border-white/20 text-white"
                         />
                         <div className="flex gap-2">
-                          <Button onClick={addProject} className="bg-primary hover:bg-primary/90">
+                          <Button onClick={addProject} className="bg-primary hover:bg-primary/90 flex-1">
                             Add Project
                           </Button>
                           <Button
                             variant="outline"
                             onClick={() => setIsAddProjectOpen(false)}
-                            className="border-white/20 text-white hover:bg-white/10"
+                            className="border-white/20 text-white hover:bg-white/10 flex-1"
                           >
                             Cancel
                           </Button>
@@ -580,11 +714,11 @@ export default function Profile() {
               </CardHeader>
               <CardContent>
                 {projects.length === 0 ? (
-                  <div className="text-center py-8">
-                    <BookOpen className="h-12 w-12 text-primary mx-auto mb-4 opacity-50" />
+                  <div className="text-center py-12">
+                    <BookOpen className="h-12 w-12 text-orange-500 mx-auto mb-4 opacity-50" />
                     <h3 className="text-lg font-semibold text-white mb-2">No Projects Yet</h3>
-                    <p className="text-gray-400 mb-4">Showcase your work by adding projects</p>
-                    <Button onClick={() => setIsAddProjectOpen(true)} className="bg-primary hover:bg-primary/90">
+                    <p className="text-gray-400 mb-6">Showcase your work by adding projects</p>
+                    <Button onClick={() => setIsAddProjectOpen(true)} className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700">
                       <Plus className="h-4 w-4 mr-2" />
                       Add Your First Project
                     </Button>
@@ -656,6 +790,84 @@ export default function Profile() {
             </Card>
           </div>
         </div>
+
+        {/* Image Crop Dialog */}
+        <Dialog open={isCropDialogOpen} onOpenChange={setIsCropDialogOpen}>
+          <DialogContent className="bg-background border-white/20 max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="text-white">Crop Profile Picture</DialogTitle>
+            </DialogHeader>
+            {selectedImage && (
+              <div className="space-y-6">
+                {/* Crop Preview */}
+                <div className="relative bg-black rounded-lg overflow-hidden aspect-square flex items-center justify-center">
+                  <img
+                    src={selectedImage}
+                    alt="Crop preview"
+                    style={{
+                      transform: `scale(${cropZoom}) translate(${cropX}px, ${cropY}px)`,
+                      transition: 'transform 0.2s',
+                    }}
+                    className="w-full h-full object-cover cursor-move"
+                    draggable
+                    onDragOver={(e) => {
+                      e.preventDefault()
+                      const rect = e.currentTarget.getBoundingClientRect()
+                      const newX = (e.clientX - rect.left - rect.width / 2) / 10
+                      const newY = (e.clientY - rect.top - rect.height / 2) / 10
+                      setCropX(Math.max(-20, Math.min(20, newX)))
+                      setCropY(Math.max(-20, Math.min(20, newY)))
+                    }}
+                  />
+                  {/* Center Circle Overlay */}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-48 h-48 rounded-full border-2 border-white/50 shadow-lg" />
+                  </div>
+                </div>
+
+                {/* Zoom Controls */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-300 text-sm">Zoom</span>
+                    <span className="text-white font-semibold">{(cropZoom * 100).toFixed(0)}%</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <ZoomOut className="h-4 w-4 text-gray-400" />
+                    <input
+                      type="range"
+                      min="0.5"
+                      max="3"
+                      step="0.1"
+                      value={cropZoom}
+                      onChange={(e) => setCropZoom(parseFloat(e.target.value))}
+                      className="flex-1 accent-primary"
+                    />
+                    <ZoomIn className="h-4 w-4 text-gray-400" />
+                  </div>
+                </div>
+
+                {/* Buttons */}
+                <div className="flex gap-3">
+                  <Button
+                    onClick={cropAndUploadImage}
+                    disabled={isUploadingAvatar}
+                    className="bg-primary hover:bg-primary/90 flex-1"
+                  >
+                    {isUploadingAvatar ? 'Uploading...' : 'Save Photo'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsCropDialogOpen(false)}
+                    className="border-white/20 text-white hover:bg-white/10 flex-1"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+            <canvas ref={canvasRef} className="hidden" />
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )

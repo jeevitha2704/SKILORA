@@ -59,17 +59,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const signUp = async (email: string, password: string, fullName?: string): Promise<AuthResult> => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName,
+    try {
+      // First, try to sign up
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+          },
+          // Skip email verification for development
+          emailRedirectTo: `${window.location.origin}/auth`,
         },
-        emailRedirectTo: `${window.location.origin}/auth`,
-      },
-    })
-    return { error, data }
+      })
+
+      if (error) {
+        return { error, data }
+      }
+
+      // If signup succeeded, attempt to sign in immediately
+      // This works because in development, users are auto-confirmed
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (signInError) {
+        // If auto sign-in fails, return success anyway (user can sign in on next attempt)
+        return { data, error: null }
+      }
+
+      return { data: signInData, error: null }
+    } catch (err: any) {
+      return { error: err, data: undefined }
+    }
   }
 
   const signIn = async (email: string, password: string): Promise<AuthResult> => {

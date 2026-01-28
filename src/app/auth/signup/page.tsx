@@ -26,11 +26,15 @@ export default function SignUp() {
     setError('')
 
     try {
-      const { error } = await signUp(email, password, fullName)
+      const { error, data } = await signUp(email, password, fullName)
       if (error) {
         setError(error.message || 'Failed to sign up')
+      } else if (data?.session) {
+        // User was auto-logged in, redirect to home
+        router.push('/')
       } else {
-        router.push('/auth/confirm')
+        // Signup successful but auto-login didn't work, show confirmation page
+        router.push('/auth/confirm?email=' + encodeURIComponent(email))
       }
     } catch (err) {
       setError('An unexpected error occurred')

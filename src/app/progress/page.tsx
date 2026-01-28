@@ -658,38 +658,74 @@ export default function Progress() {
       <Navbar />
       
       <div className="max-w-7xl mx-auto px-4 pt-24 py-8">
-        {/* Header */}
+        {/* Enhanced Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-4 font-space-grotesk">
-            Your Progress
+          <div className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-primary/20 text-primary border border-primary/30 mb-4">
+            <Trophy className="h-4 w-4 mr-2" />
+            Achievement Hub
+          </div>
+          <h1 className="text-5xl font-bold gradient-text mb-3 font-space-grotesk">
+            Your Progress 📈
           </h1>
-          <p className="text-xl text-gray-300">
-            Track your learning journey and celebrate your achievements
+          <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+            Track your learning journey, celebrate achievements, and watch yourself grow
           </p>
         </div>
 
-        {/* Stats Row */}
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
-          <Card className="glass border-white/10">
-            <CardContent className="p-6 text-center">
+        {/* Enhanced Stats Row with Gradients */}
+        <div className="grid md:grid-cols-4 gap-4 mb-8">
+          {/* Overall Progress */}
+          <Card className="glass hover-lift border-white/10 overflow-hidden">
+            <div className="h-1 bg-gradient-to-r from-blue-500 to-cyan-600" />
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <BarChart3 className="h-6 w-6 text-blue-500" />
+                <Badge className="bg-blue-500/20 text-blue-400">{overallProgress}%</Badge>
+              </div>
               <ProgressRing percentage={overallProgress} />
-              <p className="text-gray-400 mt-4">Overall Progress</p>
+              <p className="text-gray-400 text-sm mt-3 text-center">Overall Progress</p>
             </CardContent>
           </Card>
 
-          <Card className="glass border-white/10">
-            <CardContent className="p-6 text-center">
-              <Flame className="h-12 w-12 text-warning mx-auto mb-3" />
-              <div className="text-3xl font-bold text-white mb-1">{currentStreak}</div>
-              <div className="text-sm text-gray-400">Current Streak</div>
+          {/* Current Streak */}
+          <Card className="glass hover-lift border-white/10 overflow-hidden">
+            <div className="h-1 bg-gradient-to-r from-orange-500 to-red-600" />
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <Flame className="h-6 w-6 text-orange-500" />
+                <Badge className="bg-orange-500/20 text-orange-400">Active</Badge>
+              </div>
+              <p className="text-gray-400 text-sm mb-1">Current Streak</p>
+              <p className="text-3xl font-bold text-white">{currentStreak}</p>
+              <p className="text-xs text-gray-500 mt-2">consecutive days</p>
             </CardContent>
           </Card>
 
-          <Card className="glass border-white/10">
-            <CardContent className="p-6 text-center">
-              <Trophy className="h-12 w-12 text-primary mx-auto mb-3" />
-              <div className="text-3xl font-bold text-white mb-1">{earnedAchievements}</div>
-              <div className="text-sm text-gray-400">Total Achievements</div>
+          {/* Total Achievements */}
+          <Card className="glass hover-lift border-white/10 overflow-hidden">
+            <div className="h-1 bg-gradient-to-r from-purple-500 to-pink-600" />
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <Trophy className="h-6 w-6 text-purple-500" />
+                <Badge className="bg-purple-500/20 text-purple-400">Earned</Badge>
+              </div>
+              <p className="text-gray-400 text-sm mb-1">Achievements</p>
+              <p className="text-3xl font-bold text-white">{earnedAchievements}</p>
+              <p className="text-xs text-gray-500 mt-2">out of {achievements.length}</p>
+            </CardContent>
+          </Card>
+
+          {/* Total Hours */}
+          <Card className="glass hover-lift border-white/10 overflow-hidden">
+            <div className="h-1 bg-gradient-to-r from-emerald-500 to-teal-600" />
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <Clock className="h-6 w-6 text-emerald-500" />
+                <Badge className="bg-emerald-500/20 text-emerald-400">Total</Badge>
+              </div>
+              <p className="text-gray-400 text-sm mb-1">Learning Hours</p>
+              <p className="text-3xl font-bold text-white">{Math.round(totalMinutes / 60)}</p>
+              <p className="text-xs text-gray-500 mt-2">keep it up</p>
             </CardContent>
           </Card>
         </div>
@@ -697,10 +733,11 @@ export default function Progress() {
         {/* Horizontal Sections */}
         <div className="space-y-8 mb-8">
           {/* Skills Progress - Horizontal Box */}
-          <Card className="glass border-white/10">
+          <Card className="glass border-white/10 overflow-hidden">
+            <div className="h-1 bg-gradient-to-r from-cyan-500 to-blue-600" />
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
-                <Target className="h-5 w-5 text-primary" />
+                <Target className="h-5 w-5 text-cyan-500" />
                 Skills Progress
               </CardTitle>
             </CardHeader>
@@ -828,10 +865,11 @@ export default function Progress() {
           </Card>
 
           {/* Weekly Activity - Horizontal Box */}
-          <Card className="glass border-white/10">
+          <Card className="glass border-white/10 overflow-hidden">
+            <div className="h-1 bg-gradient-to-r from-indigo-500 to-purple-600" />
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-primary" />
+                <BarChart3 className="h-5 w-5 text-indigo-500" />
                 Weekly Activity
               </CardTitle>
             </CardHeader>
@@ -870,41 +908,67 @@ export default function Progress() {
           </Card>
 
           {/* Achievements - Horizontal Box */}
-          <Card className="glass border-white/10">
+          <Card className="glass border-white/10 overflow-hidden">
+            <div className="h-1 bg-gradient-to-r from-yellow-500 to-orange-600" />
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
-                <Trophy className="h-5 w-5 text-primary" />
+                <Trophy className="h-5 w-5 text-yellow-500" />
                 Achievements
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {achievements.map((achievement) => (
-                  <div
-                    key={achievement.id}
-                    className={`p-4 rounded-lg border transition-all duration-300 ${
-                      achievement.earned 
-                        ? 'border-success/20 bg-success/10 hover:border-success/50' 
-                        : 'border-white/10 bg-background/50 hover:border-white/20'
-                    }`}
-                  >
-                    <div className="text-2xl mb-2">{achievement.icon}</div>
-                    <h4 className="text-white font-semibold text-sm mb-1">{achievement.title}</h4>
-                    <p className="text-gray-400 text-xs mb-2">{achievement.description}</p>
-                    {achievement.earned && (
-                      <div className="flex items-center gap-1 text-success text-xs">
-                        <CheckCircle2 className="h-3 w-3" />
-                        <span>{achievement.date}</span>
-                      </div>
-                    )}
-                    {!achievement.earned && (
-                      <div className="flex items-center gap-1 text-gray-500 text-xs">
-                        <Lock className="h-3 w-3" />
-                        <span>Locked</span>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                {achievements.map((achievement) => {
+                  const achievementGradients: Record<string, string> = {
+                    'Beginner': 'from-emerald-500/20 to-teal-500/20 border-emerald-500/30',
+                    'Week Warrior': 'from-red-500/20 to-orange-500/20 border-red-500/30',
+                    'Time Master': 'from-purple-500/20 to-pink-500/20 border-purple-500/30',
+                    'Challenge Champion': 'from-blue-500/20 to-cyan-500/20 border-blue-500/30',
+                    'Behavioral Pro': 'from-indigo-500/20 to-blue-500/20 border-indigo-500/30',
+                    'Roadmap Explorer': 'from-green-500/20 to-emerald-500/20 border-green-500/30',
+                    'Learning Streak': 'from-yellow-500/20 to-amber-500/20 border-yellow-500/30'
+                  };
+
+                  const achievementBorder: Record<string, string> = {
+                    'Beginner': 'from-emerald-500 to-teal-600',
+                    'Week Warrior': 'from-red-500 to-orange-600',
+                    'Time Master': 'from-purple-500 to-pink-600',
+                    'Challenge Champion': 'from-blue-500 to-cyan-600',
+                    'Behavioral Pro': 'from-indigo-500 to-blue-600',
+                    'Roadmap Explorer': 'from-green-500 to-emerald-600',
+                    'Learning Streak': 'from-yellow-500 to-amber-600'
+                  };
+
+                  return (
+                    <div
+                      key={achievement.id}
+                      className={`p-4 rounded-lg border transition-all duration-300 overflow-hidden relative group ${
+                        achievement.earned 
+                          ? `bg-gradient-to-br ${achievementGradients[achievement.title] || 'from-primary/20 to-accent/20'} border-white/20 hover:border-white/40 hover-lift`
+                          : 'border-white/10 bg-background/50 hover:border-white/20 opacity-60'
+                      }`}
+                    >
+                      {achievement.earned && (
+                        <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${achievementBorder[achievement.title] || 'from-primary to-accent'}`} />
+                      )}
+                      <div className="text-3xl mb-2 text-center">{achievement.icon}</div>
+                      <h4 className="text-white font-semibold text-sm mb-1 text-center">{achievement.title}</h4>
+                      <p className="text-gray-400 text-xs mb-3 text-center line-clamp-2">{achievement.description}</p>
+                      {achievement.earned && (
+                        <div className="flex items-center justify-center gap-1 text-emerald-400 text-xs font-semibold">
+                          <CheckCircle2 className="h-3 w-3" />
+                          <span>Unlocked</span>
+                        </div>
+                      )}
+                      {!achievement.earned && (
+                        <div className="flex items-center justify-center gap-1 text-gray-500 text-xs">
+                          <Lock className="h-3 w-3" />
+                          <span>Locked</span>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </CardContent>
           </Card>
